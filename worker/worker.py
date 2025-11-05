@@ -10,7 +10,7 @@ load_dotenv()
 
 REDIS_HOST = os.getenv("REDIS_HOST", "localhost")
 REDIS_PORT = int(os.getenv("REDIS_PORT", 6379))
-OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "gemma3:4b")
+OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "oakhillpines-gemma3-4b")
 POLL_INTERVAL = int(os.getenv("POLL_INTERVAL", 5))
 LOG_FILE = os.getenv("LOG_FILE", "worker.log")
 
