@@ -3,7 +3,6 @@ import time
 import json
 import redis
 import weaviate
-from dotenv import load_dotenv
 
 from llama_index.core import VectorStoreIndex, SimpleDirectoryReader, StorageContext
 from llama_index.vector_stores.weaviate import WeaviateVectorStore
@@ -12,11 +11,10 @@ from llama_index.embeddings.ollama import OllamaEmbedding
 from llama_index.core.settings import Settings
 from llama_index.core.vector_stores import MetadataFilter, MetadataFilters, FilterOperator
 
-load_dotenv()
-
 REDIS_HOST = os.getenv("REDIS_HOST", "localhost")
 REDIS_PORT = int(os.getenv("REDIS_PORT", 6379))
 WEAVIATE_URL = os.getenv("WEAVIATE_URL", "http://localhost:8080")
+OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "llama3.2:3b")
 
 global_index = None
 
@@ -33,7 +31,7 @@ def init_global_index():
         grpc_secure=False,
     )
     
-    Settings.llm = Ollama(model="llama3.2:3b", request_timeout=100.0)
+    Settings.llm = Ollama(model=OLLAMA_MODEL, request_timeout=100.0)
     Settings.embed_model = OllamaEmbedding(model_name="nomic-embed-text:latest")
 
     vector_store = WeaviateVectorStore(weaviate_client=client, index_name="PermanentKnowledge")

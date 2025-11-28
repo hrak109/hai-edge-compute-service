@@ -1,5 +1,3 @@
-version: '3.4'
-
 services:
   weaviate:
     image: semitechnologies/weaviate:1.27.0
@@ -14,6 +12,15 @@ services:
       ENABLE_MODULES: ''
       GRPC_PORT: '50051'
 
+  ollama:
+    image: ollama/ollama:latest
+    container_name: ollama_container
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_storage:/root/.ollama
+    restart: always
+
   llm_worker:
     build: .
     depends_on:
@@ -26,4 +33,8 @@ services:
       REDIS_HOST: "localhost"
       REDIS_PORT: 6379
       WEAVIATE_URL: http://weaviate:8080
-      OLLAMA_BASE_URL: http://172.17.0.1:11434
+      OLLAMA_BASE_URL: http://ollama:11434
+      OLLAMA_MODEL: "llama3.2:3b"
+
+volumes:
+  ollama_storage:
