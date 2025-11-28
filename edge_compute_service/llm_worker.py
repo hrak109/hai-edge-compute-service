@@ -4,7 +4,7 @@ import json
 import redis
 import weaviate
 
-from llama_index.core import VectorStoreIndex, SimpleDirectoryReader, StorageContext
+from llama_index.core import VectorStoreIndex
 from llama_index.vector_stores.weaviate import WeaviateVectorStore
 from llama_index.llms.ollama import Ollama
 from llama_index.embeddings.ollama import OllamaEmbedding
@@ -13,62 +13,79 @@ from llama_index.core.vector_stores import MetadataFilter, MetadataFilters, Filt
 
 REDIS_HOST = os.getenv("REDIS_HOST", "localhost")
 REDIS_PORT = int(os.getenv("REDIS_PORT", 6379))
-WEAVIATE_URL = os.getenv("WEAVIATE_URL", "http://localhost:8080")
+WEAVIATE_URL = os.getenv("WEAVIATE_URL", "http://weaviate:8080")
+OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://ollama:11434")
 OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "llama3.2:3b")
 
 global_index = None
 
 def init_global_index():
-
     global global_index
     
     client = weaviate.connect_to_custom(
-        http_host="weaviate",      # The service name in docker-compose
+        http_host="weaviate",      
         http_port=8080,
-        http_secure=False,         # No SSL inside local network
-        grpc_host="weaviate",      # The gRPC service name
-        grpc_port=50051,           # The gRPC port (default)
+        http_secure=False,         
+        grpc_host="weaviate",      
+        grpc_port=50051,           
         grpc_secure=False,
     )
     
-    Settings.llm = Ollama(model=OLLAMA_MODEL, request_timeout=100.0)
-    Settings.embed_model = OllamaEmbedding(model_name="nomic-embed-text:latest")
+    Settings.llm = Ollama(
+        model=OLLAMA_MODEL, 
+        base_url=OLLAMA_BASE_URL, 
+        request_timeout=100.0
+    )
+    Settings.embed_model = OllamaEmbedding(
+        model_name="nomic-embed-text:latest", 
+        base_url=OLLAMA_BASE_URL
+    )
 
     vector_store = WeaviateVectorStore(weaviate_client=client, index_name="PermanentKnowledge")
     
     global_index = VectorStoreIndex.from_vector_store(vector_store=vector_store)
 
 def process_secure_request(question, auth_params):
+    if isinstance(auth_params, str):
+        auth_params = [auth_params]
+    
+    if not auth_params:
+        return "Error: Access Denied."
 
-    try:
-        filters_list = []
-        
-        if "access_level" in auth_params:
-            filters_list.append(MetadataFilter(
-                key="access_level", 
-                value=auth_params["access_level"], 
-                operator=FilterOperator.EQ
-            ))
-            
-        # if "domain" in auth_params:
-        #     filters_list.append(MetadataFilter(
-        #         key="domain", 
-        #         value=auth_params["domain"], 
-        #         operator=FilterOperator.EQ
-        #     ))
+    acl_filters = []
+    for param in auth_params:
+        acl_filters.append(MetadataFilter(
+            key="access_level",
+            value=param,
+            operator=FilterOperator.EQ
+        ))
 
-        secure_filters = MetadataFilters(filters=filters_list, condition="and")
-
-        jit_engine = global_index.as_query_engine(
-            filters=secure_filters,
-            similarity_top_k=3
+    if len(acl_filters) > 1:
+        secure_filters = MetadataFilters(
+            filters=acl_filters, 
+            condition="or"
         )
-        
-        return str(jit_engine.query(question))
-        
-    except Exception as e:
-        print(f"Secure Inference Error: {e}")
-        return "Error: No authorized domain access."
+    else:
+        secure_filters = MetadataFilters(filters=acl_filters)
+
+    jit_engine = global_index.as_query_engine(
+        filters=secure_filters,
+        similarity_top_k=3
+    )
+    
+    # retriever = jit_engine.retriever
+    # nodes = retriever.retrieve(question)
+    
+    # print(f"\n[DEBUG] Retrieved {len(nodes)} nodes for query: '{question}'")
+    # for i, node in enumerate(nodes):
+    #     print(f"  - Node {i}: Score {node.score:.4f} | Content: {node.text[:100]}...")
+    #     print(f"  - Metadata: {node.metadata}")
+    
+    # if len(nodes) == 0:
+    #     return "System Error: No documents found in database."
+
+    response = jit_engine.query(question)
+    return str(response)
 
 def main():
     init_global_index()
@@ -79,26 +96,25 @@ def main():
         if item:
             try:
                 parts = item.split("|", 2)
+                
                 if len(parts) == 3:
-                    qid, question, json_params = parts
+                    qid, question, raw_params = parts
                     try:
-                        auth_params = json.loads(json_params)
-                    except:
-                        auth_params = {}
+                        auth_params = json.loads(raw_params)
+                    except json.JSONDecodeError:
+                        auth_params = [raw_params]
                 else:
                     qid, question = parts[0], parts[1]
-                    auth_params = {} 
-
-                print(f"Processing {qid} with params: {auth_params}")
+                    auth_params = [] 
                 
                 answer = process_secure_request(question, auth_params)
 
                 r.set(f"answer:{qid}", answer)
                 
             except Exception as e:
-                print(f"Redis Error: {e}")
+                print(f"Redis Error: {e}", flush=True)
         else:
-            time.sleep(2)
+            time.sleep(3)
 
 if __name__ == "__main__":
     main()

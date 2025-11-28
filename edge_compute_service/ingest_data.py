@@ -4,17 +4,18 @@ from llama_index.core import VectorStoreIndex, SimpleDirectoryReader, StorageCon
 from llama_index.vector_stores.weaviate import WeaviateVectorStore
 from llama_index.embeddings.ollama import OllamaEmbedding
 from llama_index.core.settings import Settings
+from llama_index.readers.file import PyMuPDFReader
 
 WEAVIATE_URL = os.getenv("WEAVIATE_URL", "http://weaviate:8080") 
-OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://host.docker.internal:11434")
+OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://ollama:11434")
 DATA_DIR = "/app/knowledge_base"
 
 client = weaviate.connect_to_custom(
-    http_host="weaviate",      # The service name in docker-compose
+    http_host="weaviate",
     http_port=8080,
-    http_secure=False,         # No SSL inside local network
-    grpc_host="weaviate",      # The gRPC service name
-    grpc_port=50051,           # The gRPC port (default)
+    http_secure=False,
+    grpc_host="weaviate",
+    grpc_port=50051,
     grpc_secure=False,
 )
 
@@ -52,12 +53,13 @@ def main():
         return
 
     print("Parsing PDFs from disk...")
-    
-    # handles .pdf, .txt, .docx
+
+    loader = PyMuPDFReader()
     documents = SimpleDirectoryReader(
         input_dir=DATA_DIR,
         recursive=True,
-        file_metadata=get_security_metadata
+        file_metadata=get_security_metadata,
+        file_extractor={".pdf": loader}
     ).load_data()
 
     print(f"Loaded {len(documents)} pages/chunks. Indexing now (this uses GPU)...")

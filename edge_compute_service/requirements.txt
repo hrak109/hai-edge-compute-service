@@ -4,4 +4,5 @@ llama-index-llms-ollama
 llama-index-embeddings-ollama
 llama-index-vector-stores-weaviate
 weaviate-client
-pypdf
+pymupdf
+llama-index-readers-file
