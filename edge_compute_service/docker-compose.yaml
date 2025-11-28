@@ -20,17 +20,41 @@ services:
     volumes:
       - ollama_storage:/root/.ollama
     restart: always
+  
+  redis-tunnel:
+    image: alpine:latest
+    healthcheck:
+      test: ["CMD", "nc", "-z", "localhost", "6379"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    container_name: redis_tunnel
+    restart: always
+    command: >
+      sh -c "apk add --no-cache openssh-client autossh netcat-openbsd &&
+      cp /key.pem /root/id_rsa &&
+      chmod 600 /root/id_rsa &&
+      autossh -M 0 -4 -o StrictHostKeyChecking=no -o ServerAliveInterval=60 -o ServerAliveCountMax=3 -N -L 0.0.0.0:6379:localhost:6379 -i /root/id_rsa ec2-user@3.146.170.211"
+    volumes:
+      - ~/amazon_rsa_key.pem:/key.pem:ro
 
   llm_worker:
     build: .
+    restart: always
     depends_on:
-      - weaviate
+      weaviate:
+        condition: service_started
+      ollama:
+        condition: service_started
+      redis-tunnel:
+        condition: service_healthy
     volumes:
       - ./knowledge_base:/app/knowledge_base
+      - ./:/app
     # extra_hosts:
     # - "host.docker.internal:host-gateway"
     environment:
-      REDIS_HOST: "localhost"
+      REDIS_HOST: "redis-tunnel"
       REDIS_PORT: 6379
       WEAVIATE_URL: http://weaviate:8080
       OLLAMA_BASE_URL: http://ollama:11434
