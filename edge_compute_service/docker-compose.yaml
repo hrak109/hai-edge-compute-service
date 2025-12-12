@@ -30,6 +30,7 @@ services:
       - "11434:11434"
     volumes:
       - ollama_storage:/root/.ollama
+      - ./Modelfiles:/root/Modelfiles
     restart: always
   
   redis-tunnel:
