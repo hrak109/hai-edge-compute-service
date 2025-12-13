@@ -14,14 +14,11 @@ REDIS_PORT = int(os.getenv("REDIS_PORT", 6379))
 OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://ollama:11434")
 OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "llama3.2:3b")
 
-ENABLE_RAG = os.getenv("ENABLE_RAG", "true").lower() == "true"
-
 rag_engine = None
 
 def init_services():
     global rag_engine
     
-    # Initialize LLM & Embeddings (Always needed for Ollama)
     Settings.llm = Ollama(
         model=OLLAMA_MODEL, 
         base_url=OLLAMA_BASE_URL, 
@@ -32,11 +29,14 @@ def init_services():
         base_url=OLLAMA_BASE_URL
     )
 
-    # Initialize RAG Engine only if enabled
-    if ENABLE_RAG:
-        rag_engine = RagEngine()
-    else:
-        print("RAG: Disabled via ENABLE_RAG=false. Skipping.", flush=True)
+    # Initialize RAG Engine
+    # Deactivated for now
+    # try:
+    #     rag_engine = RagEngine()
+    # except Exception as e:
+    #     print(f"Failed to initialize RAG Engine: {e}. RAG will be disabled.", flush=True)
+    #     rag_engine = None
+    rag_engine = None
 
 def process_direct_request(question):
     response = Settings.llm.complete(question)
@@ -52,24 +52,34 @@ def main():
         item = r.lpop(list_name)
         if item:
             try:
-                parts = item.split("|", 2)
-                
+                parts = item.split("|")
                 if len(parts) == 3:
-                    qid, question, params = parts
-                    try:
-                        domain_params = json.loads(params)
-                    except json.JSONDecodeError:
-                        domain_params = [params]
+                    question_id, question_text, requested_model = parts
                 else:
-                    qid, question = parts[0], parts[1]
-                    domain_params = [] 
-                
-                answer = process_direct_request(question)
+                    print(f"Invalid message format: {item}", flush=True)
+                    continue
+                    
+                print(f"Processing question ID: {question_id} with model: {requested_model}", flush=True)
 
-                r.set(f"answer:{qid}", answer)
+                if requested_model == 'rag-engine':
+                    if rag_engine:
+                         response = rag_engine.query(question_text)
+                    else:
+                         response = "Error: RAG Engine is not initialized."
+                else:
+                    response = Settings.llm.chat(
+                        model=requested_model,
+                        messages=[{'role': 'user', 'content': question_text}]
+                    )['message']['content']
+
+                r.set(f"answer:{question_id}", response)
+                # Set TTL to 1 hour to prevent clutter
+                r.expire(f"answer:{question_id}", 3600)
                 
+                print(f"Answered: {question_id}", flush=True)
+
             except Exception as e:
-                print(f"Redis Error: {e}", flush=True)
+                print(f"Error processing message: {e}", flush=True)
         else:
             time.sleep(3)
 
