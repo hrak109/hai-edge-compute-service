@@ -20,11 +20,8 @@ rag_engine = None
 def init_services():
     global rag_engine
     
-    Settings.llm = Ollama(
-        model=OLLAMA_MODEL, 
-        base_url=OLLAMA_BASE_URL, 
-        request_timeout=100.0
-    )
+    # Settings.llm removed - we instantiate per-request now.
+
     Settings.embed_model = OllamaEmbedding(
         model_name="nomic-embed-text:latest", 
         base_url=OLLAMA_BASE_URL
@@ -49,12 +46,18 @@ def main():
     list_name = os.getenv("REDIS_QUEUE", "questions")
     print(f"Worker listening on queue: {list_name}", flush=True)
 
+    # Caching functionality to support "sticky" sessions per model
+    # while allowing reset when switching models.
+    current_llm = None
+    current_model = None
+
     while True:
         item = r.lpop(list_name)
         if item:
             try:
                 parts = item.split("|")
                 if len(parts) == 3:
+                     # Format: id|text|model
                     question_id, question_text, requested_model = parts
                 else:
                     print(f"Invalid message format: {item}", flush=True)
@@ -68,8 +71,17 @@ def main():
                     else:
                          response = "Error: RAG Engine is not initialized."
                 else:
-                    response = Settings.llm.chat(
-                        model=requested_model,
+                    # Check if we need to switch models (or init for the first time)
+                    if current_llm is None or current_model != requested_model:
+                        print(f"Initializing new LLM instance for model: {requested_model}", flush=True)
+                        current_llm = Ollama(
+                            model=requested_model,
+                            base_url=OLLAMA_BASE_URL,
+                            request_timeout=100.0
+                        )
+                        current_model = requested_model
+                
+                    response = current_llm.chat(
                         messages=[ChatMessage(role="user", content=question_text)]
                     ).message.content
 
