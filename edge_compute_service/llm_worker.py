@@ -6,6 +6,7 @@ import redis
 from llama_index.llms.ollama import Ollama
 from llama_index.embeddings.ollama import OllamaEmbedding
 from llama_index.core.settings import Settings
+from llama_index.core.llms import ChatMessage
 
 from rag_engine import RagEngine
 
@@ -69,8 +70,8 @@ def main():
                 else:
                     response = Settings.llm.chat(
                         model=requested_model,
-                        messages=[{'role': 'user', 'content': question_text}]
-                    )['message']['content']
+                        messages=[ChatMessage(role="user", content=question_text)]
+                    ).message.content
 
                 r.set(f"answer:{question_id}", response)
                 # Set TTL to 1 hour to prevent clutter
