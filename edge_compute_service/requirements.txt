@@ -1,7 +1,8 @@
 redis
-llama-index-core
+llama-index
 llama-index-llms-ollama
 llama-index-embeddings-ollama
+kafka-python==2.0.2
 llama-index-vector-stores-weaviate
 weaviate-client
 pymupdf
