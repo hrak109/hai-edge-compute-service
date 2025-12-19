@@ -28,6 +28,8 @@ services:
     container_name: ollama_container
     ports:
       - "11434:11434"
+    environment:
+      - OLLAMA_CONTEXT_LENGTH=4096
     volumes:
       - ollama_storage:/root/.ollama
       - ./Modelfiles:/root/Modelfiles
