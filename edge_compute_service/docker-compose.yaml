@@ -53,6 +53,7 @@ services:
   llm_worker_oakhillpines:
     build: .
     restart: always
+    network_mode: service:kafka-tunnel
     depends_on:
       ollama:
         condition: service_started
@@ -71,6 +72,7 @@ services:
   llm_worker_private:
     build: .
     restart: always
+    network_mode: service:kafka-tunnel
     depends_on:
       weaviate:
         condition: service_healthy
@@ -92,6 +94,7 @@ services:
   llm_worker_socius:
     build: .
     restart: always
+    network_mode: service:kafka-tunnel
     depends_on:
       ollama:
         condition: service_started
