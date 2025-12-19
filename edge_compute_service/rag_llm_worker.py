@@ -1,68 +1,54 @@
 import os
 import time
 import json
-import urllib.request
-import urllib.error
 from kafka import KafkaConsumer, KafkaProducer
 
-# Configuration
-OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL")
-KAFKA_SERVER = os.getenv("KAFKA_SERVER")
+from llama_index.llms.ollama import Ollama
+from llama_index.embeddings.ollama import OllamaEmbedding
+from llama_index.core.settings import Settings
+from llama_index.core.llms import ChatMessage
 
-# We use urllib to avoid external dependencies like 'requests' if not strictly needed
-def query_ollama(model, prompt):
-    url = f"{OLLAMA_BASE_URL}/api/chat"
-    payload = {
-        "model": model,
-        "messages": [
-            { "role": "user", "content": prompt }
-        ],
-        "stream": False,
-        "options": {
-            "num_ctx": 4096
-        }
-    }
-    
-    data = json.dumps(payload).encode('utf-8')
-    req = urllib.request.Request(url, data=data, headers={'Content-Type': 'application/json'})
-    
-    try:
-        with urllib.request.urlopen(req) as response:
-            result = json.loads(response.read().decode('utf-8'))
-            return result.get('message', {}).get('content', "Error: No content in response")
-    except urllib.error.URLError as e:
-        print(f"Error calling Ollama: {e}", flush=True)
-        return f"Error connecting to AI model: {e}"
+OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://ollama:11434")
+
+def init_services():
+    Settings.embed_model = OllamaEmbedding(
+        model_name="nomic-embed-text:latest", 
+        base_url=OLLAMA_BASE_URL
+    )
 
 def main():
+    init_services()
+    
+    kafka_server = os.getenv("KAFKA_SERVER", "kafka-tunnel:9092")
     topic_name = os.getenv("KAFKA_TOPIC", "questions")
-    print(f"Worker connecting to Kafka at {KAFKA_SERVER}, topic: {topic_name}", flush=True)
+    
+    print(f"Worker connecting to Kafka at {kafka_server}, topic: {topic_name}", flush=True)
 
-    # Retry connection for Kafka
-    consumer = None
-    producer = None
+    # Retry connection
     while True:
         try:
             consumer = KafkaConsumer(
                 topic_name,
-                bootstrap_servers=[KAFKA_SERVER],
+                bootstrap_servers=[kafka_server],
                 auto_offset_reset='earliest',
                 enable_auto_commit=True,
                 group_id=f"worker-group-{topic_name}",
                 value_deserializer=lambda x: json.loads(x.decode('utf-8')),
-                max_poll_interval_ms=600000 
+                max_poll_interval_ms=600000 # 10 minutes for slow inference
             )
             producer = KafkaProducer(
-                bootstrap_servers=[KAFKA_SERVER],
+                bootstrap_servers=[kafka_server],
                 value_serializer=lambda x: json.dumps(x).encode('utf-8')
             )
-            print("Kafka connected successfully.", flush=True)
             break
         except Exception as e:
             print(f"Searching for Kafka... {e}", flush=True)
             time.sleep(5)
             
     print(f"Worker listening on topic: {topic_name}", flush=True)
+
+    current_llm = None
+    current_model = None
 
     for message in consumer:
         try:
@@ -71,18 +57,30 @@ def main():
             
             question_id = data.get("question_id")
             question_text = data.get("text")
-            
-            # Resolve model
-            default_model = os.environ.get("OLLAMA_MODEL", "llama3.2:3b")
+            # Use payload model, or fallback to env var
+            default_model = os.environ["OLLAMA_MODEL"]
             requested_model = data.get("model") or default_model
             
             print(f"Processing question ID: {question_id} with model: {requested_model}", flush=True)
 
-            # RAG check (Removed as requested, simplified logic)
             if requested_model == 'rag-engine':
-                 response = "RAG is not maintained in this lightweight worker."
+                response = "RAG not supported in this migration yet."
             else:
-                 response = query_ollama(requested_model, question_text)
+                if current_llm is None or current_model != requested_model:
+                    print(f"Initializing new LLM instance for model: {requested_model}", flush=True)
+                    current_llm = Ollama(
+                        model=requested_model,
+                        base_url=OLLAMA_BASE_URL,
+                        request_timeout=300.0,
+                        context_window=4096,
+                        additional_kwargs={"num_ctx": 4096}
+                    )
+                    current_model = requested_model
+            
+                response_obj = current_llm.chat(
+                    messages=[ChatMessage(role="user", content=question_text)]
+                )
+                response = response_obj.message.content
 
             # Send answer
             result_payload = {

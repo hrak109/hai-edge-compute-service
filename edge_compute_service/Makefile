@@ -15,8 +15,6 @@ logs:
 restart:
 	docker compose down && docker compose up -d --build
 
-# Selective Run Targets
-# These commands automatically start dependencies (ollama, kafka-tunnel, etc.)
 run-ohp:
 	docker compose up -d llm_worker_oakhillpines
 
@@ -27,7 +25,7 @@ run-socius:
 	docker compose up -d llm_worker_socius
 
 run-infra:
-	docker compose up -d ollama kafka-tunnel weaviate
+	docker compose up -d ollama kafka-tunnel
 
 setup-models:
 	@echo "Creating OHP Model..."
