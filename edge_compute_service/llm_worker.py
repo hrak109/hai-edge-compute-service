@@ -58,6 +58,14 @@ def query_ollama(model, messages, system_prompt=None):
         print(f"Error calling Ollama: {e}", flush=True)
         return f"Error connecting to AI model: {e}"
 
+# Helper for robust deserialization
+def safe_json_deserializer(x):
+    try:
+        return json.loads(x.decode('utf-8'))
+    except Exception as e:
+        print(f"Skipping malformed message: {e}", flush=True)
+        return None
+
 def main():
     topic_name = os.getenv("KAFKA_TOPIC", "questions")
     print(f"Worker connecting to Kafka at {KAFKA_SERVER}, topic: {topic_name}", flush=True)
@@ -73,7 +81,7 @@ def main():
                 auto_offset_reset='earliest',
                 enable_auto_commit=True,
                 group_id=f"worker-group-{topic_name}",
-                value_deserializer=lambda x: json.loads(x.decode('utf-8')),
+                value_deserializer=safe_json_deserializer,
                 max_poll_interval_ms=600000 
             )
             producer = KafkaProducer(
@@ -91,6 +99,9 @@ def main():
     for message in consumer:
         try:
             data = message.value
+            if not data:
+                continue
+
             # Format: {"question_id": ..., "text": ..., "model": ..., "service": ..., "user_id": ..., "history": [], "user_context": {}}
             
             question_id = data.get("question_id")
