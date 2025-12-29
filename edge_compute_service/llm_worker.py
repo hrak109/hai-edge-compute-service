@@ -137,19 +137,18 @@ def main():
             print(f"Context Role: {socius_role}, System Instruction Pfx: {system_instruction[:50]}...", flush=True)
 
             # Messages
-            # Note: We pass system_instruction as a top-level parameter to query_ollama
-            # instead of a message with role='system', to ensure it overrides Modelfile defaults.
-            
-            # History
+            # HISTORY
             messages.extend(history)
             
             # Current Message
             messages.append({"role": "user", "content": question_text})
 
-            # RAG check (Removed as requested, simplified logic)
+            # RAG check
             if requested_model == 'rag-engine':
                  response = "RAG is not maintained in this lightweight worker."
             else:
+                 # Pass system_instruction as parameter. 
+                 # Requires Modelfile to NOT have a hardcoded SYSTEM block to work best.
                  response = query_ollama(requested_model, messages, system_prompt=system_instruction)
 
             # Send answer
