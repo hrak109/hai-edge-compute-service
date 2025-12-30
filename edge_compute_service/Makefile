@@ -16,13 +16,13 @@ restart:
 	docker compose down && docker compose up -d --build
 
 run-ohp:
-	docker compose up -d llm_worker_oakhillpines
+	docker compose up -d --build llm_worker_oakhillpines
 
 run-private:
-	docker compose up -d llm_worker_private
+	docker compose up -d --build llm_worker_private
 
 run-socius:
-	docker compose up -d llm_worker_socius
+	docker compose up -d --build llm_worker_socius
 
 run-infra:
 	docker compose up -d ollama kafka-tunnel

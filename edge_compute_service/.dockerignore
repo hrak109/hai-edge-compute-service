@@ -11,9 +11,5 @@ venv/
 .dockerignore
 Dockerfile
 docker-compose.yaml
-README.md
-# Exclude heavy data folders from build context
 knowledge_base/
 Modelfiles/
-weaviate_data/
-ollama_storage/

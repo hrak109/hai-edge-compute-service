@@ -1,6 +1,6 @@
 import os
 import weaviate
-from llama_index.core import VectorStoreIndex, Settings
+from llama_index.core import VectorStoreIndex
 from llama_index.vector_stores.weaviate import WeaviateVectorStore
 from llama_index.core.vector_stores import MetadataFilter, MetadataFilters, FilterOperator
 
@@ -16,11 +16,9 @@ class RagEngine:
 
     def _connect_weaviate(self):
         try:
-            print(f"Connecting to Weaviate at {self.weaviate_url}...", flush=True)
-            # Assuming localhost/network alias 'weaviate' based on docker-compose
-            # The URL provided is http://weaviate:8080 usually. 
-            # The original code hardcoded host parameters in connect_to_custom.
-            # We will preserve that logic but wrap it safely.
+            # Note: Using hardcoded docker service name 'weaviate' for internal connection
+            # regardless of external URL variable which might remain for reference.
+            print(f"Connecting to Weaviate service (host: weaviate)...", flush=True)
             
             client = weaviate.connect_to_custom(
                 http_host="weaviate",      

@@ -61,12 +61,10 @@ services:
         condition: service_started
       kafka-tunnel:
         condition: service_healthy
-    volumes:
-      - ./knowledge_base:/app/knowledge_base
     environment:
       KAFKA_SERVER: ${KAFKA_SERVER}
       KAFKA_TOPIC: ${KAFKA_TOPIC_OAKHILLPINES}
-      ENABLE_RAG: "${ENABLE_RAG}"
+      ENABLE_RAG: False
       OLLAMA_BASE_URL: ${OLLAMA_BASE_URL}
       OLLAMA_MODEL: ${MODEL_OAKHILLPINES}
       PYTHONUNBUFFERED: 1
@@ -87,7 +85,7 @@ services:
     environment:
       KAFKA_SERVER: ${KAFKA_SERVER}
       KAFKA_TOPIC: ${KAFKA_TOPIC_PRIVATE}
-      ENABLE_RAG: "${ENABLE_RAG}"
+      ENABLE_RAG: False
       WEAVIATE_URL: ${WEAVIATE_URL}
       OLLAMA_BASE_URL: ${OLLAMA_BASE_URL}
       OLLAMA_MODEL: ${MODEL_PRIVATE}
@@ -102,12 +100,10 @@ services:
         condition: service_started
       kafka-tunnel:
         condition: service_healthy
-    volumes:
-      - ./knowledge_base:/app/knowledge_base
     environment:
       KAFKA_SERVER: ${KAFKA_SERVER}
       KAFKA_TOPIC: ${KAFKA_TOPIC_SOCIUS}
-      ENABLE_RAG: "${ENABLE_RAG}"
+      ENABLE_RAG: False
       OLLAMA_BASE_URL: ${OLLAMA_BASE_URL}
       OLLAMA_MODEL: ${MODEL_SOCIUS}
       PYTHONUNBUFFERED: 1

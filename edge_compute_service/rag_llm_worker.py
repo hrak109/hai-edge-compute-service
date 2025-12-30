@@ -4,27 +4,18 @@ import json
 from kafka import KafkaConsumer, KafkaProducer
 
 from llama_index.llms.ollama import Ollama
-from llama_index.embeddings.ollama import OllamaEmbedding
-from llama_index.core.settings import Settings
 from llama_index.core.llms import ChatMessage
 
 OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://ollama:11434")
 
-def init_services():
-    Settings.embed_model = OllamaEmbedding(
-        model_name="nomic-embed-text:latest", 
-        base_url=OLLAMA_BASE_URL
-    )
-
 def main():
-    init_services()
+    # init_services removed as RAG is currently disabled in this worker
     
     kafka_server = os.getenv("KAFKA_SERVER", "kafka-tunnel:9092")
     topic_name = os.getenv("KAFKA_TOPIC", "questions")
     
     print(f"Worker connecting to Kafka at {kafka_server}, topic: {topic_name}", flush=True)
 
-    # Retry connection
     while True:
         try:
             consumer = KafkaConsumer(
@@ -53,11 +44,9 @@ def main():
     for message in consumer:
         try:
             data = message.value
-            # Format: {"question_id": ..., "text": ..., "model": ..., "service": ..., "user_id": ...}
             
             question_id = data.get("question_id")
             question_text = data.get("text")
-            # Use payload model, or fallback to env var
             default_model = os.environ["OLLAMA_MODEL"]
             requested_model = data.get("model") or default_model
             
@@ -82,7 +71,6 @@ def main():
                 )
                 response = response_obj.message.content
 
-            # Send answer
             result_payload = {
                 "question_id": question_id,
                 "answer": response,

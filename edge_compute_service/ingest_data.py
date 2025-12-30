@@ -6,10 +6,10 @@ from llama_index.embeddings.ollama import OllamaEmbedding
 from llama_index.core.settings import Settings
 from llama_index.readers.file import PyMuPDFReader
 
-WEAVIATE_URL = os.getenv("WEAVIATE_URL", "http://weaviate:8080") 
-OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://ollama:11434")
+OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL")
 DATA_DIR = "/app/knowledge_base"
 
+# Connect to Weaviate (internally via docker network)
 client = weaviate.connect_to_custom(
     http_host="weaviate",
     http_port=8080,
