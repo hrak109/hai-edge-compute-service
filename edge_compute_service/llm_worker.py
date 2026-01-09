@@ -106,7 +106,7 @@ def main() -> None:
             default_model = os.environ.get("OLLAMA_MODEL")
             requested_model = data.get("model") or default_model
             
-            print(f"Processing question ID: {question_id} with model: {requested_model}", flush=True)
+            print(f"DEBUG: Processing question ID: {question_id} Context: {data.get('context')} Model: {requested_model}", flush=True)
 
             system_instruction = get_system_instruction(user_context)
 
@@ -136,6 +136,7 @@ def main() -> None:
                 "context": data.get("context") # NEW: Pass context back
             }
             
+            print(f"DEBUG: Sending answer payload: {json.dumps(result_payload)}", flush=True)
             producer.send('answers', value=result_payload)
             producer.flush()
             
