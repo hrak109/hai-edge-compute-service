@@ -8,7 +8,7 @@ from kafka import KafkaConsumer, KafkaProducer
 OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL")
 KAFKA_SERVER = os.getenv("KAFKA_SERVER")
 
-def query_ollama(model, messages):
+def query_ollama(model: str, messages: list[dict]) -> str:
     url = f"{OLLAMA_BASE_URL}/api/chat"
     payload = {
         "model": model,
@@ -30,14 +30,14 @@ def query_ollama(model, messages):
         print(f"Error calling Ollama: {e}", flush=True)
         return f"Error connecting to AI model: {e}"
 
-def safe_json_deserializer(x):
+def safe_json_deserializer(x: bytes) -> dict | None:
     try:
         return json.loads(x.decode('utf-8'))
     except Exception as e:
         print(f"Skipping malformed message: {e}", flush=True)
         return None
 
-def get_system_instruction(user_context):
+def get_system_instruction(user_context: dict) -> str:
     socius_role = user_context.get("socius_role")
     
     if socius_role == 'faith_companion':
@@ -63,7 +63,7 @@ def get_system_instruction(user_context):
     
     return instruction
 
-def main():
+def main() -> None:
     topic_name = os.getenv("KAFKA_TOPIC", "questions")
     print(f"Worker connecting to Kafka at {KAFKA_SERVER}, topic: {topic_name}", flush=True)
 

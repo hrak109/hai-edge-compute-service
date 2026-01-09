@@ -47,7 +47,9 @@ def main():
             
             question_id = data.get("question_id")
             question_text = data.get("text")
-            default_model = os.environ["OLLAMA_MODEL"]
+            default_model = os.environ.get("OLLAMA_MODEL")
+            if not default_model:
+                raise RuntimeError("OLLAMA_MODEL environment variable is required but not set")
             requested_model = data.get("model") or default_model
             
             print(f"Processing question ID: {question_id} with model: {requested_model}", flush=True)

@@ -16,17 +16,27 @@ class RagEngine:
 
     def _connect_weaviate(self):
         try:
-            # Note: Using hardcoded docker service name 'weaviate' for internal connection
-            # regardless of external URL variable which might remain for reference.
-            print(f"Connecting to Weaviate service (host: weaviate)...", flush=True)
+            # Parse WEAVIATE_URL to extract host and port
+            # Expected format: http://weaviate:8080 or similar
+            url = self.weaviate_url or "http://weaviate:8080"
+            # Remove protocol prefix for host extraction
+            host = url.replace("http://", "").replace("https://", "").split(":")[0]
+            port = 8080  # Default HTTP port
+            if ":" in url.split("//")[-1]:
+                try:
+                    port = int(url.split(":")[-1].split("/")[0])
+                except ValueError:
+                    pass
+            
+            print(f"Connecting to Weaviate service (host: {host}, port: {port})...", flush=True)
             
             client = weaviate.connect_to_custom(
-                http_host="weaviate",      
-                http_port=8080,
-                http_secure=False,         
-                grpc_host="weaviate",      
+                http_host=host,      
+                http_port=port,
+                http_secure=url.startswith("https"),         
+                grpc_host=host,      
                 grpc_port=50051,           
-                grpc_secure=False,
+                grpc_secure=url.startswith("https"),
             )
             
             vector_store = WeaviateVectorStore(weaviate_client=client, index_name="PermanentKnowledge")
