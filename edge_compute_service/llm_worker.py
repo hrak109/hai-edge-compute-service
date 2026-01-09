@@ -132,7 +132,8 @@ def main() -> None:
                 "answer": response,
                 "user_id": data.get("user_id"),
                 "service": data.get("service"),
-                "model": requested_model
+                "model": requested_model,
+                "context": data.get("context") # NEW: Pass context back
             }
             
             producer.send('answers', value=result_payload)
