@@ -37,23 +37,48 @@ def safe_json_deserializer(x: bytes) -> dict | None:
         print(f"Skipping malformed message: {e}", flush=True)
         return None
 
-def get_system_instruction(user_context: dict) -> str:
-    socius_role = user_context.get("socius_role")
-    
-    if socius_role == 'faith_companion':
-        instruction = "You are Socius, an expert of Christian beliefs and companion of christian faith, giving mental advice using teachings and quotes from the christian bible. If asked about a bible quote, answer what it means and how that would apply to the user. Always answer with direct, actual quotes from the Bible, that suit the user's question and situation."
-    elif socius_role == 'friend':
-        instruction = "You are Socius, a friendly companion giving mental advice and comforting the user. Give helpful quotes from the bible, philosophers, and other quotes that can comfort the user based on their question and situation."
-    elif socius_role == 'partner':
-        instruction = "You are Socius, a loving partner of the user, acting as the user's boyfriend or girlfriend. Give helpful quotes from the bible, philosophers, and other quotes that can comfort the user based on their question and situation."
-    elif socius_role == 'assistant':
-        instruction = "You are Socius, a helpful assistant. Answer objectively, like an assistant, to questions and feedback."
-    else:
-        instruction = "You are Socius, a helpful AI assistant."
 
+def get_system_instruction(user_context: dict, socius_context: dict) -> str:
+    # 1. Determine Role and Attributes
+    role = socius_context.get("role") or "casual"
+    bot_name = socius_context.get("display_name") or "Socius"
+    tone = socius_context.get("tone") or "friendly"
+    intimacy = socius_context.get("intimacy_level") or 5
+    
+    # Base Instruction
+    instruction = f"You are {bot_name}, a {role}."
+    
+    # 2. Add Role-Specific Context
+    if role == 'christian':
+        instruction += " You are an expert of Christian beliefs, and a good friend giving mental advice using teachings and quotes from the christian bible. If asked about a bible quote, answer what it means and how that would apply to the user. Always answer with direct, actual quotes from the Bible."
+    elif role == 'casual':
+        instruction += " You are a casual friend of the user, casually talking, asking, and answering questions."
+    elif role == 'multilingual':
+        instruction += " You are a multilingual friend of the user, speaking whatever language the user speaks, correcting the user if they are incorrect. Answer their questions back with that language, writing back pronunciation in the language user provides, actual language, and the translated meaning"
+    elif role == 'tracker':
+        instruction += " You are a calorie tracking friend. When the user provides description of what they ate, give rough estimate of the calories they ate. If not descriptive enough, ask them for more clarification."
+    elif role == 'romantic':
+        instruction += " You are a loving partner of the user. Be affectionate and supportive. Use emojis"
+    elif role == 'assistant':
+        instruction += " Answer objectively and helpfully to questions and feedback."
+    else:
+        instruction += " You are Socius, a helpful AI assistant."
+
+    # 3. Add Tone and Intimacy
+    if tone == 'formal':
+        instruction += " You should speak in a formal tone. If user writes in Korean, use 존댓말"
+    elif role == 'casual':
+        instruction += " You should speak in a casual tone. If user writes in Korean, use 반말"
+    elif role == 'friendly':
+        instruction += " You should speak in a friendly tone. If user writes in Korean, use 친근한 반말 말투"
+
+    if intimacy:
+        instruction += f" Your intimacy level with the user is {intimacy}/7 (7 being closest)."
+
+    # 4. Add User Context
     if user_context:
-        display_name = user_context.get("display_name") or user_context.get("username") or "User"
-        instruction += f" You are talking to {display_name}. Address them by their name ({display_name}) wherever applicable, but not always."
+        user_name = user_context.get("display_name") or user_context.get("user_uid") or "User"
+        instruction += f" You are talking to {user_name}. Address them by name occasionally."
         
         lang_code = user_context.get("language")
         if lang_code == 'ko':
@@ -102,13 +127,14 @@ def main() -> None:
             question_text = data.get("text")
             history = data.get("history") or []
             user_context = data.get("user_context") or {}
+            socius_context = data.get("socius_context") or {} # NEW: Get Socius Context
             
             default_model = os.environ.get("OLLAMA_MODEL")
             requested_model = data.get("model") or default_model
             
             print(f"DEBUG: Processing question ID: {question_id} Context: {data.get('context')} Model: {requested_model}", flush=True)
 
-            system_instruction = get_system_instruction(user_context)
+            system_instruction = get_system_instruction(user_context, socius_context)
 
             messages = []
             
@@ -133,7 +159,7 @@ def main() -> None:
                 "user_id": data.get("user_id"),
                 "service": data.get("service"),
                 "model": requested_model,
-                "context": data.get("context") # NEW: Pass context back
+                "context": data.get("context") # return context
             }
             
             print(f"DEBUG: Sending answer payload: {json.dumps(result_payload)}", flush=True)
