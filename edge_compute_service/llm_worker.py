@@ -40,6 +40,35 @@ def query_ollama(model: str, messages: list[dict]) -> str:
         print(f"Error calling Ollama: {e}", flush=True)
         return f"Error connecting to AI model: {e}"
 
+def get_model_details(model: str) -> str:
+    url = f"{OLLAMA_BASE_URL}/api/show"
+    payload = {"name": model}
+    data = json.dumps(payload).encode('utf-8')
+    req = urllib.request.Request(url, data=data, headers={'Content-Type': 'application/json'})
+    
+    try:
+        with urllib.request.urlopen(req) as response:
+            result = json.loads(response.read().decode('utf-8'))
+            # Try to get the parent model or family
+            details = result.get('details', {})
+            parent_model = details.get('parent_model', '')
+            family = details.get('family', '')
+            
+            info_str = f"Family: {family}"
+            if parent_model:
+                info_str += f", Parent: {parent_model}"
+            
+            # Also try to parse FROM line from modelfile if available
+            modelfile = result.get('modelfile', '')
+            for line in modelfile.split('\n'):
+                if line.upper().startswith('FROM'):
+                    info_str += f", Base: {line.split(' ', 1)[1]}"
+                    break
+            
+            return info_str
+    except Exception as e:
+        return f"Could not fetch details: {e}"
+
 def safe_json_deserializer(x: bytes) -> dict | None:
     try:
         return json.loads(x.decode('utf-8'))
@@ -64,13 +93,20 @@ def get_system_instruction(user_context: dict, socius_context: dict) -> str:
     elif role == 'casual':
         instruction += " You are a casual friend of the user, casually talking, asking, and answering questions."
     elif role == 'multilingual':
-        target_lang = socius_context.get('multilingual_selection', 'the language user speaks')
+        LANG_CODE_MAP = {
+            'en': 'English',
+            'ko': 'Korean',
+            'ja': 'Japanese',
+            'zh': 'Chinese',
+            'es': 'Spanish',
+            'fr': 'French',
+            'de': 'German'
+        }
+        selection = socius_context.get('multilingual_selection')
+        target_lang = LANG_CODE_MAP.get(selection, 'English')
         lang_code = user_context.get("language")
-        if lang_code == 'ko':
-            lang = "한국어"
-        elif lang_code == 'en':
-            lang = "English"
-        instruction += f" You are a multilingual friend of the user, speaking {target_lang}. Write short and simple answers, and always answer in 3 paragraphs: 1 paragraph in {target_lang}, 1 paragraph of {target_lang} pronunciation written in {lang}, and 1 paragraph with translation in {lang}. If user makes any language error or mistake in message, correct it and write back asking if that's what they've meant. Only if user's message is correct, provide answer to their questions using the 3 paragraphs format"
+        lang = LANG_CODE_MAP.get(lang_code, 'English')
+        instruction += f" You are a multilingual friend of the user, speaking {target_lang}. Write short and simple, always answer in 3 paragraphs: 1 paragraph in {target_lang}, 1 paragraph of first paragraph's pronunciation written in {lang}, and 1 paragraph with translation of first paragraph in {lang}. If user makes any language error or mistake in message, correct it and write back asking if that's what they've meant using the same 3 paragraph rule. Only if they are correct, answer the user's question in the same 3 paragraph rule"
     elif role == 'cal_tracker':
         instruction += " You are a calorie tracking friend. When the user provides description of what they ate, give rough estimate of the calories they ate. If not descriptive enough, ask them for more clarification."
     elif role == 'romantic':
@@ -157,6 +193,7 @@ def main() -> None:
                 logging.info("\n=== Request Context ===")
                 logging.info(f"Question ID: {question_id}")
                 logging.info(f"Model: {requested_model}")
+                logging.info(f"Model Details: {get_model_details(requested_model)}")
                 logging.info(f"Socius Context:\n{json.dumps(socius_context, indent=2, ensure_ascii=False)}")
                 logging.info(f"User Context:\n{json.dumps(user_context, indent=2, ensure_ascii=False)}")
                 logging.info(f"Question Text: {question_text}")
