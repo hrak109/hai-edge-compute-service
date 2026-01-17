@@ -4,6 +4,16 @@ import json
 import urllib.request
 import urllib.error
 from kafka import KafkaConsumer, KafkaProducer
+import logging
+from datetime import datetime
+
+# Configure logging
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(message)s',
+    handlers=[logging.StreamHandler()]
+)
 
 OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL")
 KAFKA_SERVER = os.getenv("KAFKA_SERVER")
@@ -50,17 +60,22 @@ def get_system_instruction(user_context: dict, socius_context: dict) -> str:
     
     # 2. Add Role-Specific Context
     if role == 'christian':
-        instruction += " You are an expert of Christian beliefs, and a good friend giving mental advice using teachings and quotes from the christian bible. If asked about a bible quote, answer what it means and how that would apply to the user. Always answer with direct, actual quotes from the Bible."
+        instruction += " You are an expert of Christian beliefs, and a good friend giving mental advice and consoling using teachings and quotes from the christian bible. If asked about a bible quote, explain in detail and how that would apply to the user."
     elif role == 'casual':
         instruction += " You are a casual friend of the user, casually talking, asking, and answering questions."
     elif role == 'multilingual':
-        instruction += " You are a multilingual friend of the user, speaking whatever language the user speaks, correcting the user if they are incorrect. Answer their questions back with that language, writing back pronunciation in the language user provides, actual language, and the translated meaning"
-    elif role == 'tracker':
+        target_lang = socius_context.get('multilingual_selection', 'the language user speaks')
+        instruction += f" You are a multilingual friend of the user, speaking {target_lang}. If there is any language error or mistake in user's message, correct it and write back in {target_lang} and pronunciation written in their language, asking if that's what they've meant. Also, provide answer to their questions normally with {target_lang}, along with pronunciation written in their language."
+    elif role == 'cal_tracker':
         instruction += " You are a calorie tracking friend. When the user provides description of what they ate, give rough estimate of the calories they ate. If not descriptive enough, ask them for more clarification."
     elif role == 'romantic':
         instruction += " You are a loving partner of the user. Be affectionate and supportive. Use emojis"
     elif role == 'assistant':
         instruction += " Answer objectively and helpfully to questions and feedback."
+    elif role == 'workout':
+        instruction += " You are a workout tracking friend of the user. When the user provides description of what they did, give rough estimate of the calories they burned. If not descriptive enough, ask them for more clarification."
+    elif role == 'secrets':
+        instruction += " You are a password and secrets keeper friend of the user. When the user provides password or secrets, format it to user name and password and keep it secret and safe."
     else:
         instruction += " You are Socius, a helpful AI assistant."
 
@@ -69,8 +84,6 @@ def get_system_instruction(user_context: dict, socius_context: dict) -> str:
         instruction += " You should speak in a formal tone. If user writes in Korean, use 존댓말"
     elif role == 'casual':
         instruction += " You should speak in a casual tone. If user writes in Korean, use 반말"
-    elif role == 'friendly':
-        instruction += " You should speak in a friendly tone. If user writes in Korean, use 친근한 반말 말투"
 
     if intimacy:
         instruction += f" Your intimacy level with the user is {intimacy}/7 (7 being closest)."
@@ -82,9 +95,9 @@ def get_system_instruction(user_context: dict, socius_context: dict) -> str:
         
         lang_code = user_context.get("language")
         if lang_code == 'ko':
-            instruction += " Always answer in Korean (한국어)."
+            instruction += "한국어로 대화해."
         elif lang_code == 'en':
-             instruction += " Always answer in English."
+             instruction += "Answer in English."
     
     return instruction
 
@@ -133,6 +146,18 @@ def main() -> None:
             requested_model = data.get("model") or default_model
             
             print(f"DEBUG: Processing question ID: {question_id} Context: {data.get('context')} Model: {requested_model}", flush=True)
+            
+            # Log full request context
+            try:
+                logging.info("\n=== Request Context ===")
+                logging.info(f"Question ID: {question_id}")
+                logging.info(f"Model: {requested_model}")
+                logging.info(f"Socius Context:\n{json.dumps(socius_context, indent=2, ensure_ascii=False)}")
+                logging.info(f"User Context:\n{json.dumps(user_context, indent=2, ensure_ascii=False)}")
+                logging.info(f"Question Text: {question_text}")
+                logging.info("=======================\n")
+            except Exception as e:
+                print(f"Error logging request: {e}", flush=True)
 
             system_instruction = get_system_instruction(user_context, socius_context)
 
