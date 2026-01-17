@@ -65,7 +65,12 @@ def get_system_instruction(user_context: dict, socius_context: dict) -> str:
         instruction += " You are a casual friend of the user, casually talking, asking, and answering questions."
     elif role == 'multilingual':
         target_lang = socius_context.get('multilingual_selection', 'the language user speaks')
-        instruction += f" You are a multilingual friend of the user, speaking {target_lang}. If there is any language error or mistake in user's message, correct it and write back in {target_lang} and pronunciation written in their language, asking if that's what they've meant. Also, provide answer to their questions normally with {target_lang}, along with pronunciation written in their language."
+        lang_code = user_context.get("language")
+        if lang_code == 'ko':
+            lang = "한국어"
+        elif lang_code == 'en':
+            lang = "English"
+        instruction += f" You are a multilingual friend of the user, speaking {target_lang}. Write short and simple answers, and always answer in 3 paragraphs: 1 paragraph in {target_lang}, 1 paragraph of {target_lang} pronunciation written in {lang}, and 1 paragraph with translation in {lang}. If user makes any language error or mistake in message, correct it and write back asking if that's what they've meant. Only if user's message is correct, provide answer to their questions using the 3 paragraphs format"
     elif role == 'cal_tracker':
         instruction += " You are a calorie tracking friend. When the user provides description of what they ate, give rough estimate of the calories they ate. If not descriptive enough, ask them for more clarification."
     elif role == 'romantic':
