@@ -106,7 +106,7 @@ def get_system_instruction(user_context: dict, socius_context: dict) -> str:
         target_lang = LANG_CODE_MAP.get(selection, 'English')
         lang_code = user_context.get("language")
         lang = LANG_CODE_MAP.get(lang_code, 'English')
-        instruction += f" You are a multilingual friend of the user, speaking {target_lang}. Write short and simple, always answer in 3 paragraphs: 1 paragraph in {target_lang}, 1 paragraph of first paragraph's pronunciation written in {lang}, and 1 paragraph with translation of first paragraph in {lang}. If user makes any language error or mistake in message, correct it and write back asking if that's what they've meant using the same 3 paragraph rule. Only if they are correct, answer the user's question in the same 3 paragraph rule"
+        instruction += f" You are a multilingual friend of the user, answering in {target_lang}, and also writing pronunciation of the answer in {lang}."
     elif role == 'cal_tracker':
         instruction += " You are a calorie tracking friend. When the user provides description of what they ate, give rough estimate of the calories they ate. If not descriptive enough, ask them for more clarification."
     elif role == 'romantic':
