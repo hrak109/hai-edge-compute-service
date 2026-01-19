@@ -35,6 +35,14 @@ def query_ollama(model: str, messages: list[dict]) -> str:
     try:
         with urllib.request.urlopen(req) as response:
             result = json.loads(response.read().decode('utf-8'))
+            
+            # Log Stat
+            eval_count = result.get('eval_count', 0)
+            eval_duration = result.get('eval_duration', 0)
+            if eval_count > 0 and eval_duration > 0:
+                tps = eval_count / (eval_duration / 1e9)
+                print(f"STATS: Generated {eval_count} tokens in {eval_duration/1e9:.2f}s ({tps:.2f} tokens/sec)", flush=True)
+
             return result.get('message', {}).get('content', "Error: No content in response")
     except urllib.error.URLError as e:
         print(f"Error calling Ollama: {e}", flush=True)
@@ -53,8 +61,9 @@ def get_model_details(model: str) -> str:
             details = result.get('details', {})
             parent_model = details.get('parent_model', '')
             family = details.get('family', '')
+            quant_level = details.get('quantization_level', 'Unknown')
             
-            info_str = f"Family: {family}"
+            info_str = f"Family: {family}, Quant: {quant_level}"
             if parent_model:
                 info_str += f", Parent: {parent_model}"
             
@@ -92,21 +101,102 @@ def get_system_instruction(user_context: dict, socius_context: dict) -> str:
         instruction += " You are an expert of Christian beliefs, and a good friend giving mental advice and consoling using teachings and quotes from the christian bible. If asked about a bible quote, explain in detail and how that would apply to the user."
     elif role == 'casual':
         instruction += " You are a casual friend of the user, casually talking, asking, and answering questions."
+    elif role == 'cal_tracker' or role == 'tracker':
+        instruction += """ You are a Calorie Tracker Helper.
+        When the user mentions food they ate, you MUST output a JSON block at the end of your response offering estimated calorie options.
+        
+        Format:
+        ```json
+        {
+          "type": "calorie_event",
+          "food": "Food Name",
+          "options": [
+            {"label": "Small (Start)", "calories": 100},
+            {"label": "Medium (Average)", "calories": 200},
+            {"label": "Large (Heavy)", "calories": 300}
+          ]
+        }
+        ```
+        - Adjust labels and calorie amounts to be realistic for the specific food.
+        - Give 3 options: Small/Light, Medium/Average, Large/Heavy.
+        - Keep your text response conversational and short, confirming you understood the food.
+        """
     elif role == 'multilingual':
         LANG_CODE_MAP = {
-            'en': 'English',
-            'ko': 'Korean',
-            'ja': 'Japanese',
-            'zh': 'Chinese',
-            'es': 'Spanish',
-            'fr': 'French',
-            'de': 'German'
+            'en': 'English', 'ko': 'Korean', 'ja': 'Japanese',
+            'zh': 'Chinese', 'es': 'Spanish', 'fr': 'French', 'de': 'German'
         }
+        
         selection = socius_context.get('multilingual_selection')
         target_lang = LANG_CODE_MAP.get(selection, 'English')
         lang_code = user_context.get("language")
         lang = LANG_CODE_MAP.get(lang_code, 'English')
-        instruction += f" You are a multilingual friend of the user, answering in {target_lang}, and also writing pronunciation of the answer in {lang}."
+
+        # --- COMPACT EXAMPLES (Save Input Tokens) ---
+        path_a_example = ""
+        path_b_example = ""
+
+        if lang == 'Korean' and target_lang == 'Japanese':
+            # Concise: No long explanations, just the fix.
+            path_a_example = """
+            In: "와타시와 겡끼 데스까라"
+            Out:
+            [JP]: 私は元気ですから。
+            [Pron]: 와타시와 겡끼 데스까라.
+            [Mean]: 저는 건강하니까요.
+            (완벽합니다! '와타시와'와 '데스까라' 활용이 정확해요.)
+            """
+            path_b_example = """
+            In: "쿄와 조또 츠메타이 데스"
+            Out:
+            [Err]: 날씨에는 '츠메타이'(물건) 대신 '사무이'를 씁니다.
+            [Corr]: 今日はちょっと寒いです。
+            [Pron]: 쿄와 조또 사무이 데스.
+            [Mean]: 오늘은 조금 춥네요.
+            """
+        else:
+            path_a_example = "..." # Generic compact
+            path_b_example = "..." # Generic compact
+
+        instruction += f"""
+        Act as a {target_lang} Phonetic Decoder. 
+        User writes {target_lang} sounds in {lang}.
+
+        ### CRITICAL RULES:
+        1. **IGNORE {lang} GRAMMAR:** Treat input purely as sounds. "Wa" is {target_lang} sound, not {lang} word.
+        2. **MAXIMUM BREVITY:** - [Error] must be **under 15 words**.
+        - Final comment must be **1 short sentence**.
+        3. **LANGUAGE:** All feedback in **{lang}**.
+        4. **CRITICAL RULE FOR [PRONUNCIATION] FIELD:**
+        You must perform **STRICT SOUND MIRRORING**.
+        - The [Pronunciation] field must represent the **JAPANESE SOUNDS** only.
+        - **NEVER** swap a Japanese particle sound for a Korean particle.
+        - **BAD:** Japanese sound is "Wa", but you write "는" (Korean particle).
+        - **GOOD:** Japanese sound is "Wa", so you write "와" (Korean sound).
+        
+        Example Check:
+        - Input: "와타시와" (Watashi-wa)
+        - Output Pronunciation MUST be: "와타시와" (KEEP 'WA')
+        - Output Pronunciation MUST NOT be: "와타시는" (NO 'NEUN')
+
+        ### OUTPUT FORMAT:
+
+        **PATH A (Correct):**
+        [{target_lang}]: (Native Script)
+        [Pron]: (In {lang})
+        [Mean]: (In {lang})
+        (Short confirmation)
+
+        **PATH B (Error):**
+        [Err]: (Brief explanation in {lang})
+        [Corr]: (Native Script)
+        [Pron]: (In {lang})
+        [Mean]: (In {lang})
+
+        ### EXAMPLES:
+        {path_a_example}
+        {path_b_example}
+        """
     elif role == 'cal_tracker':
         instruction += " You are a calorie tracking friend. When the user provides description of what they ate, give rough estimate of the calories they ate. If not descriptive enough, ask them for more clarification."
     elif role == 'romantic':
@@ -132,7 +222,7 @@ def get_system_instruction(user_context: dict, socius_context: dict) -> str:
     # 4. Add User Context
     if user_context:
         user_name = user_context.get("display_name") or user_context.get("user_uid") or "User"
-        instruction += f" You are talking to {user_name}. Address them by name occasionally."
+        instruction += f" You are talking to {user_name}. Address them by name if needed"
         
         lang_code = user_context.get("language")
         if lang_code == 'ko':
@@ -157,7 +247,8 @@ def main() -> None:
                 enable_auto_commit=True,
                 group_id=f"worker-group-{topic_name}",
                 value_deserializer=safe_json_deserializer,
-                max_poll_interval_ms=600000 
+                max_poll_interval_ms=1800000, # 30 minutes (matches TTL)
+                max_poll_records=1 # Process one at a time to avoid timeout
             )
             producer = KafkaProducer(
                 bootstrap_servers=[KAFKA_SERVER],
@@ -187,6 +278,20 @@ def main() -> None:
             requested_model = data.get("model") or default_model
             
             print(f"DEBUG: Processing question ID: {question_id} Context: {data.get('context')} Model: {requested_model}", flush=True)
+
+            # TTL Check
+            timestamp_str = data.get("timestamp")
+            if timestamp_str:
+                try:
+                    msg_time = datetime.fromisoformat(timestamp_str)
+                    now_time = datetime.utcnow()
+                    age = (now_time - msg_time).total_seconds()
+                    if age > 1800: # 30 minutes
+                        print(f"WARNING: Message {question_id} is stale ({age}s old). Skipping.", flush=True)
+                        logging.warning(f"Dropping stale message {question_id} (Age: {age}s)")
+                        continue
+                except ValueError:
+                    logging.warning(f"Invalid timestamp format for message {question_id}: {timestamp_str}")
             
             # Log full request context
             try:
