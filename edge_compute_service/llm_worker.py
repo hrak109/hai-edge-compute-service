@@ -320,8 +320,10 @@ def main() -> None:
             if system_instruction:
                  messages.append({"role": "system", "content": system_instruction})
 
-            # 2. Add History
-            messages.extend(history)
+            # 2. Add History (skip for calorie tracker to avoid accumulating food items)
+            role = socius_context.get("role") or ""
+            if role not in ('cal_tracker', 'tracker'):
+                messages.extend(history)
             
             # 3. Add Current Question
             messages.append({"role": "user", "content": question_text})
