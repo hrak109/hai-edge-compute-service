@@ -103,7 +103,12 @@ def get_system_instruction(user_context: dict, socius_context: dict) -> str:
         instruction += " You are a casual friend of the user, casually talking, asking, and answering questions."
     elif role == 'cal_tracker' or role == 'tracker':
         instruction += """ You are a Calorie Tracker Helper.
-        When the user mentions food they ate, you MUST output a JSON block at the end of your response offering estimated calorie options.
+        
+        IMPORTANT: Only respond to the food items mentioned in the user's CURRENT message. 
+        Do NOT refer to or accumulate food items from previous messages in the conversation.
+        Each message should be treated independently - only estimate calories for what the user just mentioned.
+        
+        When the user mentions food they ate in their current message, you MUST output a JSON block at the end of your response offering estimated calorie options.
         
         Format:
         ```json
@@ -120,6 +125,7 @@ def get_system_instruction(user_context: dict, socius_context: dict) -> str:
         - Adjust labels and calorie amounts to be realistic for the specific food.
         - Give 3 options: Small/Light, Medium/Average, Large/Heavy.
         - Keep your text response conversational and short, confirming you understood the food.
+        - If the user asks a general question or doesn't mention food, just respond helpfully without a JSON block.
         """
     elif role == 'multilingual':
         LANG_CODE_MAP = {
