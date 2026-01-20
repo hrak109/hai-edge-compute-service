@@ -128,91 +128,155 @@ def get_system_instruction(user_context: dict, socius_context: dict) -> str:
         - If the user asks a general question or doesn't mention food, just respond helpfully without a JSON block.
         """
     elif role == 'multilingual':
+        # 1. Configuration
         LANG_CODE_MAP = {
             'en': 'English', 'ko': 'Korean', 'ja': 'Japanese',
             'zh': 'Chinese', 'es': 'Spanish', 'fr': 'French', 'de': 'German'
         }
-        
+
         selection = socius_context.get('multilingual_selection')
         target_lang = LANG_CODE_MAP.get(selection, 'English')
-        lang_code = user_context.get("language")
-        lang = LANG_CODE_MAP.get(lang_code, 'English')
-
-        # --- COMPACT EXAMPLES (Save Input Tokens) ---
-        path_a_example = ""
-        path_b_example = ""
-
-        if lang == 'Korean' and target_lang == 'Japanese':
-            # Concise: No long explanations, just the fix.
-            path_a_example = """
-            In: "와타시와 겡끼 데스까라"
-            Out:
-            [JP]: 私は元気ですから。
-            [Pron]: 와타시와 겡끼 데스까라.
-            [Mean]: 저는 건강하니까요.
-            (완벽합니다! '와타시와'와 '데스까라' 활용이 정확해요.)
-            """
-            path_b_example = """
-            In: "쿄와 조또 츠메타이 데스"
-            Out:
-            [Err]: 날씨에는 '츠메타이'(물건) 대신 '사무이'를 씁니다.
-            [Corr]: 今日はちょっと寒いです。
-            [Pron]: 쿄와 조또 사무이 데스.
-            [Mean]: 오늘은 조금 춥네요.
-            """
-        else:
-            path_a_example = "..." # Generic compact
-            path_b_example = "..." # Generic compact
-
-        instruction += f"""
-        Act as a {target_lang} Phonetic Decoder. 
-        User writes {target_lang} sounds in {lang}.
-
-        ### CRITICAL RULES:
-        1. **IGNORE {lang} GRAMMAR:** Treat input purely as sounds. "Wa" is {target_lang} sound, not {lang} word.
-        2. **MAXIMUM BREVITY:** - [Error] must be **under 15 words**.
-        - Final comment must be **1 short sentence**.
-        3. **LANGUAGE:** All feedback in **{lang}**.
-        4. **CRITICAL RULE FOR [PRONUNCIATION] FIELD:**
-        You must perform **STRICT SOUND MIRRORING**.
-        - The [Pronunciation] field must represent the **JAPANESE SOUNDS** only.
-        - **NEVER** swap a Japanese particle sound for a Korean particle.
-        - **BAD:** Japanese sound is "Wa", but you write "는" (Korean particle).
-        - **GOOD:** Japanese sound is "Wa", so you write "와" (Korean sound).
         
-        Example Check:
-        - Input: "와타시와" (Watashi-wa)
-        - Output Pronunciation MUST be: "와타시와" (KEEP 'WA')
-        - Output Pronunciation MUST NOT be: "와타시는" (NO 'NEUN')
+        user_lang_code = user_context.get("language")
+        user_lang = LANG_CODE_MAP.get(user_lang_code, 'English')
+        
+        bot_name = socius_context.get('bot_name', 'Socius')
+        bot_gender = socius_context.get('bot_gender', 'female')
+        
+        # 2. Dynamic Rules (only set Japanese-specific rules when target is Japanese)
+        formatting_instructions = ""
+        pronunciation_instruction = "Standard Romanization"
+        pronoun_rule = ""  # No special pronoun rules for non-Japanese languages
+        
+        if target_lang == 'Japanese':
+            # Pronoun rules only for Japanese
+            if bot_gender == 'female':
+                pronoun_rule = "Use 'Watashi(私)'. FORBIDDEN: 'Boku', 'Ore'."
+            else:
+                pronoun_rule = "Use 'Boku(僕)' or 'Ore(俺)'."
+            
+            formatting_instructions = """
+            - **JAPANESE SYNTAX:** You must use `Kanji(Hiragana)` syntax for ALL Kanji.
+            - *Correct:* `私(わたし)`
+            - *Incorrect:* `私`
+            """
+            if user_lang == 'Korean':
+                pronunciation_instruction = """
+                **Korean Hangul Transcription**
+                - **CRITICAL:** Write the *sounds* of Block 1 using ONLY Korean Hangul characters.
+                - **NO JAPANESE CHARACTERS:** Do NOT use Hiragana, Katakana, or Kanji in Block 2. Only 한글.
+                - **PHONETIC ONLY:** Transcribe the SOUND, not the meaning.
+                  - `本当(ほんとう)` -> `혼토` (NOT `진짜`)
+                  - `ありがとう` -> `아리가토` (NOT `고마워`)
+                  - `一緒に(いっしょに)` -> `잇쇼니` (NOT `함께`)
+                  - `行きましょう(いきましょう)` -> `이키마쇼` (NOT `가요`)
+                """
+            else:
+                pronunciation_instruction = "**Standard Romaji**"
 
-        ### OUTPUT FORMAT:
+        # 4. The "Ownership-Anchored" Compiler Prompt
+        instruction += f"""
+        ### SYSTEM ROLE: RAW TEXT COMPILER
+        **YOU ARE NOT A CHATBOT.** You are a backend processor.
+        Your task is to convert input into strict text blocks separated by blank lines.
 
-        **PATH A (Correct):**
-        [{target_lang}]: (Native Script)
-        [Pron]: (In {lang})
-        [Mean]: (In {lang})
-        (Short confirmation)
+        ### INPUT DATA
+        - **Target Language:** {target_lang}
+        - **User Language:** {user_lang}
+        - **Bot Identity:** {bot_name} ({bot_gender})
 
-        **PATH B (Error):**
-        [Err]: (Brief explanation in {lang})
-        [Corr]: (Native Script)
-        [Pron]: (In {lang})
-        [Mean]: (In {lang})
+        ### COMPILATION CONSTRAINTS (INSTANT FAIL)
+        1. **NO LABELS:** Do not write "Corrected:", "Block 1:", etc. Just output the content.
+        2. **SPEAKER INTEGRITY:**
+        - **Block 1** is the **USER** speaking (Corrected). DO NOT change the User's pronouns (`俺`, `僕`, `私`). Keep the User's voice.
+        - **Block 3** is the **BOT** speaking (Reply).
+        3. **PRONOUN LOCK (Block 3 ONLY):** {pronoun_rule} This rule applies ONLY to Block 3, the Bot's reply.
+        4. **STRICT SPACING:** Double newline between every block.
 
-        ### EXAMPLES:
-        {path_a_example}
-        {path_b_example}
+        {formatting_instructions}
+
+        Output exactly **5 blocks** in this order:
+
+        [BLOCK 1: The USER'S sentence, grammatically corrected in {target_lang}]
+        *(Constraint: KEEP the User's original meaning AND pronouns. If User says '俺の家', Block 1 MUST say '俺の家'.)*
+        
+        [BLOCK 2: Explanation of the correction in {user_lang}]
+        *(Constraint: EVERY WORD in Block 2 MUST be {user_lang}. FORBIDDEN: Any {target_lang} text in this block.)*
+        
+        [BLOCK 3: Reply from {bot_name} in {target_lang}]
+        *(Constraint: {bot_name} replies to Block 1. Use friendly tone.)*
+
+        [BLOCK 4: The Sound of BLOCK 3 using {pronunciation_instruction}]
+        *(Constraint: PHONETIC TRANSCRIPTION ONLY. Write how Block 3 SOUNDS, not what it MEANS.)*
+        *(Example: `昨日(きのう)` → `키노` (SOUND). NOT `어제` (MEANING).)*
+        
+        [BLOCK 5: Translation of BLOCK 3 in {user_lang}]
+        *(Constraint: Translate the MEANING of Block 3 into {user_lang}.)*
+
+        ### EXECUTION TASK
+        Analyze the user input below. Output the raw text blocks ONLY.
         """
     elif role == 'cal_tracker':
         instruction += " You are a calorie tracking friend. When the user provides description of what they ate, give rough estimate of the calories they ate. If not descriptive enough, ask them for more clarification."
     elif role == 'romantic':
-        instruction += " You are a loving partner of the user. Be affectionate and supportive. Use emojis"
+        instruction += " You are a loving partner of the user. Talk normally and naturally like a very close friend and lover. Be affectionate and supportive. Use emojis"
     elif role == 'assistant':
         instruction += " Answer objectively and helpfully to questions and feedback."
     elif role == 'workout':
-        instruction += " You are a workout tracking friend of the user. When the user provides description of what they did, give rough estimate of the calories they burned. If not descriptive enough, ask them for more clarification."
+        instruction += """ You are a Workout Tracking Friend.
+        
+        IMPORTANT: Only respond to exercises mentioned in the user's CURRENT message.
+        Do NOT refer to or accumulate exercises from previous messages.
+        
+        When the user describes an exercise or workout they did, you MUST output a JSON block at the end of your response offering estimated calorie burn options.
+        
+        Format:
+        ```json
+        {
+          "type": "workout_event",
+          "exercise": "Exercise Name",
+          "duration": 30,
+          "options": [
+            {"label": "Light Intensity", "calories": 150},
+            {"label": "Moderate Intensity", "calories": 250},
+            {"label": "High Intensity", "calories": 350}
+          ]
+        }
+        ```
+        - Adjust the exercise name, duration (in minutes), and calorie amounts based on what the user described.
+        - Give 3 options: Light, Moderate, High intensity.
+        - Calorie estimates should be realistic for the specific exercise and duration.
+        - Keep your text response conversational and short, confirming you understood the exercise.
+        - If the user asks a general question or doesn't mention a specific workout, respond helpfully without a JSON block.
+        """
     elif role == 'secrets':
-        instruction += " You are a password and secrets keeper friend of the user. When the user provides password or secrets, format it to user name and password and keep it secret and safe."
+        instruction += """ You are a password and secrets keeper friend of the user.
+        
+        IMPORTANT: When the user provides credentials (username, password, email, login info, etc.), you MUST output a JSON block.
+        
+        Format:
+        ```json
+        {
+          "type": "password_event",
+          "service": "Service name (e.g., Google, Netflix) or empty string if unknown",
+          "username": "The username, email, or login ID",
+          "password": "The password"
+        }
+        ```
+        
+        Rules:
+        - Extract the service name from context (e.g., "my Google password" → service: "Google")
+        - If the user mentions a website or app name, use that as the service
+        - If no service is mentioned, leave service as empty string ""
+        - Keep your text response friendly and confirm you'll save it securely
+        - If the user asks a general question or doesn't provide credentials, respond normally without JSON
+        
+        Example user input: "Save my Netflix login: john@email.com password abc123"
+        Example response: "I'll keep your Netflix login safe! 🔐
+        ```json
+        {"type": "password_event", "service": "Netflix", "username": "john@email.com", "password": "abc123"}
+        ```"
+        """
     else:
         instruction += " You are Socius, a helpful AI assistant."
 
@@ -322,7 +386,8 @@ def main() -> None:
 
             # 2. Add History (skip for calorie tracker to avoid accumulating food items)
             role = socius_context.get("role") or ""
-            if role not in ('cal_tracker', 'tracker'):
+            # TEMPORARY: Disable history for now
+            if False and role not in ('cal_tracker', 'tracker'):
                 messages.extend(history)
             
             # 3. Add Current Question
