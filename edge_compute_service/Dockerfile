@@ -7,9 +7,13 @@ COPY requirements.txt .
 RUN apt-get update && apt-get install -y build-essential \
     && pip install --no-cache-dir -r requirements.txt
 
-COPY llm_worker.py .
-COPY rag_engine.py .
-COPY ingest_data.py .
-COPY clear_queue.py .
+# Copy new structure
+COPY core/ core/
+COPY services/ services/
+COPY workers/ workers/
+COPY main.py .
 
-CMD ["python", "llm_worker.py"]
+
+
+# Default command
+CMD ["python", "main.py", "--type", "standard"]

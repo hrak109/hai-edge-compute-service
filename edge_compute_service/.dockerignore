@@ -12,4 +12,5 @@ venv/
 Dockerfile
 docker-compose.yaml
 knowledge_base/
-Modelfiles/
+Modelfiles/tests/
+.pytest_cache/
