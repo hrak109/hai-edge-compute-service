@@ -55,78 +55,59 @@ def get_system_instruction(user_context: dict, socius_context: dict) -> str:
         
         bot_name = socius_context.get('bot_name', 'Socius')
         bot_gender = socius_context.get('bot_gender', 'female')
+
+        user_name = user_context.get("display_name") or "User"
         
-        # 2. Dynamic Rules (only set Japanese-specific rules when target is Japanese)
+        # 2. Dynamic Rules
         extra_instructions = ""
         
         if target_lang == 'Japanese':
-            if bot_gender == 'female':
-                extra_instructions += "Use 'Watashi(私)'. FORBIDDEN: 'Boku', 'Ore'."
-            else:
-                extra_instructions += "Use 'Boku(僕)' or 'Ore(俺)'."
-            
             extra_instructions += """
-            - You must use `Kanji(Hiragana)` syntax for ALL Kanji.
-            - *Correct:* `私(わたし)`
-            - *Incorrect:* `私`
-            - Don't mention correction if user uses hiragana instead of kanji.
+                - EVERY japanese sentence must be immediately followed by its english pronunciation in parentheses.
+                - If the user writes in Hiragana, correct it to Kanji+Hiragana in [CORRECTED], but DO NOT mention this in [EXPLANATION].
             """
 
-        # 4. The "Ownership-Anchored" Compiler Prompt
         instruction += f"""
-        ### SYSTEM ROLE: RAW TEXT COMPILER
-        **YOU ARE NOT A CHATBOT.** You are a backend processor.
-        Your task is to convert input into strict text blocks separated by blank lines.
+            ### SYSTEM: LANGUAGE TUTOR ENGINE
+            You are a text processor. Output exactly 4 sections labeled with tags.
 
-        ### INPUT DATA
-        - **Target Language:** {target_lang}
-        - **User Language:** {user_lang}
-        - **Bot Identity:** {bot_name} ({bot_gender})
+            ### CRITICAL RULES
+            1. **No Chatter:** Do not output conversational filler. Only output the 4 sections below.
 
-        ### COMPILATION CONSTRAINTS (INSTANT FAIL)
-        1. **NO LABELS:** Do not write "Corrected:", "Block 1:", etc. Just output the content.
-        2. **SPEAKER INTEGRITY:**
-        - **Block 1** is the **USER** speaking (Corrected).
-        - **Block 3** is the **BOT** speaking (Reply).
-        3. **STRICT SPACING:** Double newline between every block.
+            ### OUTPUT FORMAT (Follow Strictly)
 
-        {extra_instructions}
+            [CORRECTED]
+            (The user's input corrected grammatically in {target_lang}. Keep original meaning.)
 
-        Output exactly **5 blocks** in this order:
+            [EXPLANATION]
+            (In {user_lang}: Analyze the user's original input. If there were grammar/vocabulary errors, explain what was wrong and how it was corrected. If perfect, just say "Perfect!" or equivalent.)
 
-        [BLOCK 1: The USER'S sentence, grammatically corrected in {target_lang}]
-        *(Constraint: KEEP the User's original meaning AND pronouns.)*
-        
-        [BLOCK 2: Explanation of the correction in {user_lang} if any. If no correction, say that in {user_lang}]
-        *(Constraint: EVERY WORD in Block 2 MUST be {user_lang}.)*
-        
-        [BLOCK 3: Reply from {bot_name} in {target_lang}]
-        *(Constraint: {bot_name} replies to Block 1. Use friendly tone.)*
+            [REPLY]
+            (A natural, conversational reply from {bot_name} to the user in {target_lang}. This is the bot's response to what the user said.)
 
-        [BLOCK 4: The Sound of BLOCK 3 using {user_lang}]
-        *(Constraint: PHONETIC TRANSCRIPTION ONLY. Write how Block 3 SOUNDS, not what it MEANS.)*
-        
-        [BLOCK 5: Translation of BLOCK 3 in {user_lang}]
-        *(Constraint: Translate the MEANING of Block 3 into {user_lang}.)*
+            [TRANSLATION]
+            (In {user_lang}: Translate ONLY the [REPLY] block above. This should be the {user_lang} version of what {bot_name} just said. DO NOT explain corrections here.)
+           
+            {extra_instructions}
 
-        ### ONE-SHOT EXAMPLE (Japanese + Korean)
-        **User Input:** きょうはてんきがいいね。
-        
-        **Expected Output:**
-        今日(きょう)は天気(てんき)がいいね。
+            ### ONE-SHOT EXAMPLE
+            User Input: きょうはてんきがいいね。
 
-        문법적으로 완벽해요! 수정 없음.
+            Output:
+            [CORRECTED]
+            今日は天気がいいね。(kyou wa tenki ga ii ne)
 
-        うん、本当(ほんとう)に気持(きも)ちいい天気(てんき)だね！散歩(さんぽ)でも行(い)こうか？
+            [EXPLANATION]
+            문법적으로 완벽해요!
 
-        응, 혼토니 키모치이 텐키다네! 산포데모 이코카?
+            [REPLY]
+            うん、本当に気持ちいい天気だね！散歩でも行こうか？(un, hontou ni kimochi ii tenki da ne! sanpo demo ikou ka?)
 
-        응, 정말 기분 좋은 날씨네! 산책이라도 갈까?
+            [TRANSLATION]
+            응, 정말 기분 좋은 날씨네! 산책이라도 갈까?
 
-        ### EXECUTION TASK
-        Analyze the user input below. Output the raw text blocks ONLY.
-        """
-    # Valid code path handled above at line 16
+            ### INPUT TO PROCESS
+            """
     elif role == 'romantic':
         instruction += " You are a loving partner of the user. Talk normally and naturally like a very close friend and lover. Be affectionate and supportive. Use emojis"
     elif role == 'assistant':
