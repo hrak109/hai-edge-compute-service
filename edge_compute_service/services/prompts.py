@@ -86,7 +86,7 @@ def get_system_instruction(user_context: dict, socius_context: dict) -> str:
             (A natural, conversational reply from {bot_name} to the user in {target_lang}. This is the bot's response to what the user said.)
 
             [TRANSLATION]
-            (In {user_lang}: Translate ONLY the [REPLY] block above. This should be the {user_lang} version of what {bot_name} just said. DO NOT explain corrections here.)
+            (In {user_lang}: Translate the [REPLY] block above into {user_lang}.)
            
             {extra_instructions}
 
