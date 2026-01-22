@@ -6,6 +6,14 @@ import logging
 from datetime import datetime, timezone
 import json
 import time
+import re
+
+def strip_multilingual_labels(text: str) -> str:
+    """Remove section labels like [CORRECTED], [EXPLANATION], [REPLY], [TRANSLATION] from text."""
+    labels = [r'\[CORRECTED\]', r'\[EXPLANATION\]', r'\[REPLY\]', r'\[TRANSLATION\]']
+    for label in labels:
+        text = re.sub(label + r'\s*\n?', '', text, flags=re.IGNORECASE)
+    return text.strip()
 
 # Configure logging
 logging.basicConfig(
@@ -83,6 +91,11 @@ def run_worker():
                  response = "RAG is not maintained in this lightweight worker."
             else:
                  response = query_ollama(requested_model, messages)
+            
+            # Post-process: strip labels for multilingual responses
+            role = socius_context.get("role", "")
+            if role == "multilingual":
+                response = strip_multilingual_labels(response)
 
             result_payload = {
                 "question_id": question_id,

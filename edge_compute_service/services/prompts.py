@@ -85,7 +85,7 @@ def get_system_instruction(user_context: dict, socius_context: dict) -> str:
         
         if target_lang == 'Japanese':
             extra_instructions += """
-                - In [REPLY] block, Japanese sentences must be immediately followed by its English pronunciation in parentheses.
+                - In [REPLY] block, Japanese sentences must be immediately followed by Romaji version in parentheses.
                 - If the user writes Kanji in Hiragana, correct it to Kanji in [CORRECTED] block.
             """
 
