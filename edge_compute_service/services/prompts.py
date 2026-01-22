@@ -100,7 +100,7 @@ def get_system_instruction(user_context: dict, socius_context: dict) -> str:
 
             ### OUTPUT FORMAT (Follow Strictly)
             [CORRECTED]
-            (Only in {target_lang}, correct any errors if any, exactly all of what user wrote. Preserve original meaning, don't add additional information other than what user said.)
+            (Only in {target_lang}, correct any errors if any, exactly all of what user wrote. Preserve original meaning, subject (don't change I to You), and don't add additional information other than what user said.)
 
             [EXPLANATION]
             (Only in {user_lang}, report what corrections were made in the above [CORRECTED] block. If no corrections were made, say it's perfect.)
@@ -113,7 +113,11 @@ def get_system_instruction(user_context: dict, socius_context: dict) -> str:
 
             {extra_instructions}
            
-            ### ONE-SHOT EXAMPLE
+            ### ONE-SHOT EXAMPLE"""
+        
+        # Add language-specific examples
+        if target_lang == 'Japanese':
+            instruction += """
             User Input: きょうはてんきがいいね。
 
             Output:
@@ -128,7 +132,61 @@ def get_system_instruction(user_context: dict, socius_context: dict) -> str:
 
             [TRANSLATION]
             응, 정말 기분 좋은 날씨네! 산책이라도 갈까?
+            """
+        elif target_lang == 'English':
+            instruction += """
+            User Input: I goed to the store yesterday.
 
+            Output:
+            [CORRECTED]
+            I went to the store yesterday.
+
+            [EXPLANATION]
+            "goed"는 틀린 과거형이에요. "go"의 과거형은 "went"입니다.
+
+            [REPLY]
+            Oh nice! What did you buy at the store?
+
+            [TRANSLATION]
+            오 좋아! 가게에서 뭐 샀어?
+            """
+        elif target_lang == 'French':
+            instruction += """
+            User Input: Je suis allé au cinema hier.
+
+            Output:
+            [CORRECTED]
+            Je suis allé au cinéma hier.
+
+            [EXPLANATION]
+            "cinema"에 악센트가 빠졌어요. 올바른 철자는 "cinéma"입니다.
+
+            [REPLY]
+            Super ! Quel film as-tu regardé ?
+
+            [TRANSLATION]
+            좋아! 어떤 영화 봤어?
+            """
+        else:
+            # Generic example for other languages
+            instruction += f"""
+            User Input: (User writes something in {target_lang})
+
+            Output:
+            [CORRECTED]
+            (Corrected version in {target_lang})
+
+            [EXPLANATION]
+            (Explanation of corrections in {user_lang})
+
+            [REPLY]
+            (Natural reply in {target_lang})
+
+            [TRANSLATION]
+            (Translation of reply in {user_lang})
+            """
+        
+        instruction += """
             ### INPUT TO PROCESS
             """
     elif role == 'romantic':
