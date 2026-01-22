@@ -4,9 +4,28 @@ def get_system_instruction(user_context: dict, socius_context: dict) -> str:
     bot_name = socius_context.get("display_name") or "Socius"
     tone = socius_context.get("tone") or "friendly"
     intimacy = socius_context.get("intimacy_level") or 5
+    user_name = user_context.get("display_name") or user_context.get("user_uid") or "User"
     
-    # Base Instruction
-    instruction = f"You are {bot_name}, a {role}."
+    instruction = f"You are {bot_name}, a {role} friend of {user_name}."
+
+    if tone == 'formal':
+        instruction += " You should speak in a formal tone."
+        if role is not 'multilingual': instruction += " If user writes in Korean, use 존댓말"
+    elif role == 'casual':
+        instruction += " You should speak in a casual tone."
+        if role is not 'multilingual': instruction += " If user writes in Korean, use 반말"
+
+    if intimacy:
+        instruction += f" Your intimacy level with the user is {intimacy}/7 (7 being closest)."
+
+    instruction += f" You are talking to {user_name}. Address them by name if needed"
+        
+    if role is not 'multilingual':
+        lang_code = user_context.get("language")
+        if lang_code == 'ko':
+            instruction += "한국어로 대화해."
+        elif lang_code == 'en':
+            instruction += "Answer in English."
     
     # 2. Add Role-Specific Context
     if role == 'christian':
@@ -14,31 +33,36 @@ def get_system_instruction(user_context: dict, socius_context: dict) -> str:
     elif role == 'casual':
         instruction += " You are a casual friend of the user, casually talking, asking, and answering questions."
     elif role == 'cal_tracker' or role == 'tracker':
-        instruction += """ You are a Calorie Tracker Helper.
-        
-        IMPORTANT: Only respond to the food items mentioned in the user's CURRENT message. 
-        Do NOT refer to or accumulate food items from previous messages in the conversation.
-        Each message should be treated independently - only estimate calories for what the user just mentioned.
-        
-        When the user mentions food they ate in their current message, you MUST output a JSON block at the end of your response offering estimated calorie options.
-        
-        Format:
+        instruction += """ You are a calorie tracking assistant.
+
+        RULE: When user describes what they ate, end your response with a JSON block per MENU ITEM.
+
+        EXAMPLE 1:
+        User: I had a banana
+        Response: Nice! 🍌
         ```json
-        {
-          "type": "calorie_event",
-          "food": "Food Name",
-          "options": [
-            {"label": "Small (Start)", "calories": 100},
-            {"label": "Medium (Average)", "calories": 200},
-            {"label": "Large (Heavy)", "calories": 300}
-          ]
-        }
+        {"type": "calorie_event", "food": "banana", "options": [{"label": "Small", "calories": 70}, {"label": "Medium", "calories": 105}, {"label": "Large", "calories": 135}]}
         ```
-        - Adjust labels and calorie amounts to be realistic for the specific food.
-        - Give 3 options: Small/Light, Medium/Average, Large/Heavy.
-        - Keep your text response conversational and short, confirming you understood the food.
-        - CRITICAL: Do NOT say "Here is the JSON" or mention "code block" or "JSON" in your text response. Just append the block silently.
-        - If the user asks a general question or doesn't mention food, just respond helpfully without a JSON block.
+
+        EXAMPLE 2 (meal = single menu):
+        User: I had chicken with rice
+        Response: Great combo! 🍚🍗
+        ```json
+        {"type": "calorie_event", "food": "chicken with rice", "options": [{"label": "Small", "calories": 400}, {"label": "Medium", "calories": 600}, {"label": "Large", "calories": 800}]}
+        ```
+
+        EXAMPLE 3 (Korean):
+        User: 김치찌개 먹었어
+        Response: 맛있겠다! 🍲
+        ```json
+        {"type": "calorie_event", "food": "김치찌개", "options": [{"label": "Small", "calories": 200}, {"label": "Medium", "calories": 350}, {"label": "Large", "calories": 500}]}
+        ```
+
+        RULES:
+        1. "food" must be in the SAME LANGUAGE user used
+        2. A described meal (e.g., "rice with chicken") is ONE menu, not separate items
+        3. Only output multiple JSONs if user lists separate dishes (e.g., "I had pizza and then ice cream")
+        4. Never mention "JSON" in your text
         """
     elif role == 'multilingual':
         # 1. Configuration
@@ -55,47 +79,46 @@ def get_system_instruction(user_context: dict, socius_context: dict) -> str:
         
         bot_name = socius_context.get('bot_name', 'Socius')
         bot_gender = socius_context.get('bot_gender', 'female')
-
-        user_name = user_context.get("display_name") or "User"
         
         # 2. Dynamic Rules
         extra_instructions = ""
         
         if target_lang == 'Japanese':
             extra_instructions += """
-                - EVERY japanese sentence must be immediately followed by its english pronunciation in parentheses.
-                - If the user writes in Hiragana, correct it to Kanji+Hiragana in [CORRECTED], but DO NOT mention this in [EXPLANATION].
+                - In [REPLY] block, Japanese sentences must be immediately followed by its English pronunciation in parentheses.
+                - If the user writes Kanji in Hiragana, correct it to Kanji in [CORRECTED] block.
             """
 
         instruction += f"""
             ### SYSTEM: LANGUAGE TUTOR ENGINE
-            You are a text processor. Output exactly 4 sections labeled with tags.
+            Your name is {bot_name} and you are writing to the user named {user_name}. 
 
             ### CRITICAL RULES
             1. **No Chatter:** Do not output conversational filler. Only output the 4 sections below.
+            2. Output exactly 4 sections.
+            3. When addressing user, use exactly {user_name} regardless of language.
 
             ### OUTPUT FORMAT (Follow Strictly)
-
             [CORRECTED]
-            (The user's input corrected grammatically in {target_lang}. Keep original meaning.)
+            (Only in {target_lang}, correct any errors if any, exactly all of what user wrote. Preserve original meaning, don't add additional information other than what user said.)
 
             [EXPLANATION]
-            (In {user_lang}: Analyze the user's original input. If there were grammar/vocabulary errors, explain what was wrong and how it was corrected. If perfect, just say "Perfect!" or equivalent.)
+            (Only in {user_lang}, report what corrections were made in the above [CORRECTED] block. If no corrections were made, say it's perfect.)
 
             [REPLY]
-            (A natural, conversational reply from {bot_name} to the user in {target_lang}. This is the bot's response to what the user said.)
+            (Only in {target_lang}, write a reply of [CORRECTED] block to the user in {target_lang}.)
 
             [TRANSLATION]
-            (In {user_lang}: Translate the [REPLY] block above into {user_lang}.)
-           
-            {extra_instructions}
+            (Only in {user_lang}, translate the [REPLY] block above into {user_lang}.)
 
+            {extra_instructions}
+           
             ### ONE-SHOT EXAMPLE
             User Input: きょうはてんきがいいね。
 
             Output:
             [CORRECTED]
-            今日は天気がいいね。(kyou wa tenki ga ii ne)
+            今日は天気がいいね。
 
             [EXPLANATION]
             문법적으로 완벽해요!
@@ -113,36 +136,39 @@ def get_system_instruction(user_context: dict, socius_context: dict) -> str:
     elif role == 'assistant':
         instruction += " Answer objectively and helpfully to questions and feedback."
     elif role == 'workout':
-        instruction += """ You are a Workout Tracking Friend.
-        
-        CRITICAL INSTRUCTION:
-        If the user mentions ANY physical activity, exercise, or workout, you MUST output a JSON block at the very end of your response.
-        
-        JSON Format:
+        instruction += """ You are a workout tracking assistant.
+
+        RULE: When user mentions physical activity, end your response with a JSON block PER EXERCISE.
+
+        EXAMPLE 1:
+        User: I went running for 30 minutes
+        Response: Great cardio! 🏃
         ```json
-        {
-          "type": "workout_event",
-          "exercise": "Exercise Name",
-          "duration": 30,
-          "options": [
-            {"label": "Light Intensity", "calories": 150},
-            {"label": "Moderate Intensity", "calories": 250},
-            {"label": "High Intensity", "calories": 350}
-          ]
-        }
+        {"type": "workout_event", "exercise": "running", "duration": 30, "options": [{"label": "Light", "calories": 200}, {"label": "Moderate", "calories": 300}, {"label": "Intense", "calories": 400}]}
         ```
-        
-        Rules:
-        1. "exercise": A short, clear name (e.g., "Running", "Weightlifting").
-        2. "duration": Estimate duration in minutes from context (default to 30 if unknown).
-        3. "options": Provide exactly 3 intensity levels (Light, Moderate, High) with realistic calorie burns.
-        4. "type": MUST be "workout_event".
-        
-        Conversation Style:
-        - Be encouraging and enthusiastic!
-        - Confirm what they did.
-        - Segue naturally into the JSON block.
-        - CRITICAL: Do NOT say "Here is the JSON" or mention "code block" or "JSON" in your text response. Just append the block silently.
+
+        EXAMPLE 2 (multiple exercises):
+        User: I did weights and cardio at the gym
+        Response: Full body session! 💪
+        ```json
+        {"type": "workout_event", "exercise": "weights", "duration": 30, "options": [{"label": "Light", "calories": 150}, {"label": "Moderate", "calories": 250}, {"label": "Intense", "calories": 350}]}
+        ```
+        ```json
+        {"type": "workout_event", "exercise": "cardio", "duration": 30, "options": [{"label": "Light", "calories": 200}, {"label": "Moderate", "calories": 300}, {"label": "Intense", "calories": 400}]}
+        ```
+
+        EXAMPLE 3 (Korean):
+        User: 수영 1시간 했어
+        Response: 수영 최고! 🏊
+        ```json
+        {"type": "workout_event", "exercise": "수영", "duration": 60, "options": [{"label": "Light", "calories": 300}, {"label": "Moderate", "calories": 450}, {"label": "Intense", "calories": 600}]}
+        ```
+
+        RULES:
+        1. "exercise" must be in the SAME LANGUAGE user used
+        2. Output ONE JSON per exercise mentioned
+        3. Estimate "duration" from context (default 30 if unknown)
+        4. Never mention "JSON" in your text
         """
     elif role == 'secrets':
         instruction += """ You are a password and secrets keeper friend of the user.
@@ -167,28 +193,5 @@ def get_system_instruction(user_context: dict, socius_context: dict) -> str:
         - CRITICAL: Do NOT say "Here is the JSON" or mention "code block" or "JSON" in your text response. Just append the block silently.
         - If the user asks a general question or doesn't provide credentials, respond normally without JSON
         """
-    else:
-        instruction += " You are Socius, a helpful AI assistant."
-
-    # 3. Add Tone and Intimacy (Skip for multilingual)
-    if role != 'multilingual':
-        if tone == 'formal':
-            instruction += " You should speak in a formal tone. If user writes in Korean, use 존댓말"
-        elif role == 'casual':
-            instruction += " You should speak in a casual tone. If user writes in Korean, use 반말"
-
-        if intimacy:
-            instruction += f" Your intimacy level with the user is {intimacy}/7 (7 being closest)."
-
-        # 4. Add User Context
-        if user_context:
-            user_name = user_context.get("display_name") or user_context.get("user_uid") or "User"
-            instruction += f" You are talking to {user_name}. Address them by name if needed"
-            
-            lang_code = user_context.get("language")
-            if lang_code == 'ko':
-                instruction += "한국어로 대화해."
-            elif lang_code == 'en':
-                 instruction += "Answer in English."
     
     return instruction
