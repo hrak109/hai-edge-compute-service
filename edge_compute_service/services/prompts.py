@@ -71,53 +71,28 @@ def get_system_instruction(user_context: dict, socius_context: dict) -> str:
             'zh': 'Chinese', 'es': 'Spanish', 'fr': 'French', 'de': 'German'
         }
 
-        selection = socius_context.get('multilingual_selection')
+        # Safe retrievals with defaults
+        selection = socius_context.get('multilingual_selection', 'en')
         target_lang = LANG_CODE_MAP.get(selection, 'English')
         
-        user_lang_code = user_context.get("language")
+        user_lang_code = user_context.get("language", 'en')
         user_lang = LANG_CODE_MAP.get(user_lang_code, 'English')
         
         bot_name = socius_context.get('bot_name', 'Socius')
-        bot_gender = socius_context.get('bot_gender', 'female')
-        
-        # 2. Dynamic Rules
-        extra_instructions = ""
-        
+        user_name = user_context.get('user_name', 'User') # Ensure user_name exists
+
+        # 2. Dynamic Rules & Examples
+        language_specific_rules = ""
+        example_block = ""
+
+        # Logic for Japanese (Kanji/Romaji enforcement)
         if target_lang == 'Japanese':
-            extra_instructions += """
-                - In [REPLY] block, Japanese sentences must be immediately followed by Romaji version in parentheses.
-                - If the user writes Kanji in Hiragana, correct it to Kanji in [CORRECTED] block.
-            """
-
-        instruction += f"""
-            ### SYSTEM: LANGUAGE TUTOR ENGINE
-            Your name is {bot_name} and you are writing to the user named {user_name}. 
-
-            ### CRITICAL RULES
-            1. **No Chatter:** Do not output conversational filler. Only output the 4 sections below.
-            2. Output exactly 4 sections.
-            3. When addressing user, use exactly {user_name} regardless of language.
-
-            ### OUTPUT FORMAT (Follow Strictly)
-            [CORRECTED]
-            (Only in {target_lang}, correct any errors if any, exactly all of what user wrote. Preserve original meaning, subject (don't change I to You), and don't add additional information other than what user said.)
-
-            [EXPLANATION]
-            (Only in {user_lang}, report what corrections were made in the above [CORRECTED] block. If no corrections were made, say it's perfect.)
-
-            [REPLY]
-            (Only in {target_lang}, write a reply of [CORRECTED] block to the user in {target_lang}.)
-
-            [TRANSLATION]
-            (Only in {user_lang}, translate the [REPLY] block above into {user_lang}.)
-
-            {extra_instructions}
-           
-            ### ONE-SHOT EXAMPLE"""
-        
-        # Add language-specific examples
-        if target_lang == 'Japanese':
-            instruction += """
+            language_specific_rules = """
+            - [REPLY] SECTION RULE: Every Japanese sentence must be immediately followed by its Romaji reading in parentheses. Example: こんにちは (Konnichiwa).
+            - [CORRECTED] SECTION RULE: If the user writes in Hiragana where Kanji is appropriate, convert it to Kanji.
+                    """
+                    example_block = f"""
+            ### ONE-SHOT EXAMPLE
             User Input: きょうはてんきがいいね。
 
             Output:
@@ -125,16 +100,18 @@ def get_system_instruction(user_context: dict, socius_context: dict) -> str:
             今日は天気がいいね。
 
             [EXPLANATION]
-            문법적으로 완벽해요!
+            문법적으로 완벽해요! 다만 'きょう'와 'てんき'는 보통 한자로 씁니다.
 
             [REPLY]
-            うん、本当に気持ちいい天気だね！散歩でも行こうか？(un, hontou ni kimochi ii tenki da ne! sanpo demo ikou ka?)
+            うん、本当に気持ちいい天気だね！散歩でも行こうか？ (Un, hontou ni kimochi ii tenki da ne! Sanpo demo ikou ka?)
 
             [TRANSLATION]
             응, 정말 기분 좋은 날씨네! 산책이라도 갈까?
             """
+        # Logic for English
         elif target_lang == 'English':
-            instruction += """
+            example_block = f"""
+            ### ONE-SHOT EXAMPLE
             User Input: I goed to the store yesterday.
 
             Output:
@@ -142,16 +119,19 @@ def get_system_instruction(user_context: dict, socius_context: dict) -> str:
             I went to the store yesterday.
 
             [EXPLANATION]
-            "goed"는 틀린 과거형이에요. "go"의 과거형은 "went"입니다.
+            "goed"는 틀린 표현입니다. "go"의 과거형은 불규칙 동사인 "went"를 써야 해요.
 
             [REPLY]
-            Oh nice! What did you buy at the store?
+            Oh nice! Did you buy anything interesting?
 
             [TRANSLATION]
-            오 좋아! 가게에서 뭐 샀어?
+            오 좋아! 뭐 흥미로운 것 좀 샀어?
             """
+
+        # Logic for French
         elif target_lang == 'French':
-            instruction += """
+            example_block = f"""
+            ### ONE-SHOT EXAMPLE
             User Input: Je suis allé au cinema hier.
 
             Output:
@@ -159,36 +139,67 @@ def get_system_instruction(user_context: dict, socius_context: dict) -> str:
             Je suis allé au cinéma hier.
 
             [EXPLANATION]
-            "cinema"에 악센트가 빠졌어요. 올바른 철자는 "cinéma"입니다.
+            "cinema" 철자에 악센트(accent aigu)가 빠졌네요. "cinéma"가 맞습니다.
 
             [REPLY]
-            Super ! Quel film as-tu regardé ?
+            Super! Quel film as-tu regardé?
 
             [TRANSLATION]
             좋아! 어떤 영화 봤어?
             """
+            
+        # Default Fallback
         else:
-            # Generic example for other languages
-            instruction += f"""
-            User Input: (User writes something in {target_lang})
+            example_block = f"""
+            ### ONE-SHOT EXAMPLE
+            User Input: (User text in {target_lang})
 
             Output:
             [CORRECTED]
-            (Corrected version in {target_lang})
+            (Corrected natural version in {target_lang})
 
             [EXPLANATION]
-            (Explanation of corrections in {user_lang})
+            (Grammar/Vocab explanation in {user_lang})
 
             [REPLY]
-            (Natural reply in {target_lang})
+            (Conversational reply in {target_lang})
 
             [TRANSLATION]
-            (Translation of reply in {user_lang})
+            (Translation of the reply in {user_lang})
             """
+
+        # 3. Construct Final Prompt
+        instruction += f"""
+        ### ROLE
+        You are {bot_name}, an expert language tutor teaching {target_lang} to a user named {user_name} (who speaks {user_lang}). 
+        Your tone is encouraging, helpful, and culturally aware.
+
+        ### CONSTRAINTS (STRICT)
+        1. **NO CHATTER:** Do not provide conversational fillers like "Here is the correction" or "I understand". 
+        2. **FORMAT:** Output strictly the 4 sections defined below.
+        3. **IDENTITY:** Use the user's name "{user_name}" EXACTLY. Do NOT refer to them as "User", "Student", or any other generic term.
+
+        ### OUTPUT SECTIONS
+        1. [CORRECTED]
+        - Language: {target_lang} only.
+        - Task: Rewrite the user's input with perfect grammar and natural phrasing. Keep the original meaning.
         
-        instruction += """
-            ### INPUT TO PROCESS
-            """
+        2. [EXPLANATION]
+        - Language: {user_lang} only.
+        - Task: Explain the mistakes you fixed. If the user was perfect, praise them.
+
+        3. [REPLY]
+        - Language: {target_lang} only.
+        - Task: Write a natural, conversational response to the user's statement to keep the dialogue going.
+
+        4. [TRANSLATION]
+        - Language: {user_lang} only.
+        - Task: Translate the text from the [REPLY] section into {user_lang}.
+
+        {language_specific_rules}
+
+        {example_block}
+        """
     elif role == 'romantic':
         instruction += " You are a loving partner of the user. Talk normally and naturally like a very close friend and lover. Be affectionate and supportive. Use emojis"
     elif role == 'assistant':
