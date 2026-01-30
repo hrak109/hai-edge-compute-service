@@ -65,3 +65,6 @@ knowledge_base/
 .idea/
 *.swp
 *.swo
+
+# Secret Prompts
+*_secret.py

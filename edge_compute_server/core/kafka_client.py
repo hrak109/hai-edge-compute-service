@@ -10,11 +10,11 @@ def safe_json_deserializer(x: bytes) -> dict | None:
         print(f"Skipping malformed message: {e}", flush=True)
         return None
 
-def create_consumer(server: str, topic: str, group_id: str) -> KafkaConsumer:
+def create_consumer(server: str, topics: list[str], group_id: str) -> KafkaConsumer:
     while True:
         try:
             consumer = KafkaConsumer(
-                topic,
+                *topics,
                 bootstrap_servers=[server],
                 auto_offset_reset='earliest',
                 enable_auto_commit=True,
@@ -23,7 +23,7 @@ def create_consumer(server: str, topic: str, group_id: str) -> KafkaConsumer:
                 max_poll_interval_ms=1800000, # 30 minutes
                 max_poll_records=1
             )
-            print(f"Kafka Consumer connected to {server}/{topic}", flush=True)
+            print(f"Kafka Consumer connected to {server}/{topics}", flush=True)
             return consumer
         except Exception as e:
             print(f"Waiting for Kafka ({server})... {e}", flush=True)
