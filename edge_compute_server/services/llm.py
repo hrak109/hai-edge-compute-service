@@ -10,15 +10,21 @@ def query_ollama(model: str, messages: list[dict]) -> str:
         "messages": messages,
         "stream": False,
         "options": {
-            "num_ctx": 4096
+            "num_ctx": 4096,
+            "num_predict": 1024
         }
     }
+
+    # Log Request
+    system_instruction = next((m["content"] for m in messages if m["role"] == "system"), "None")
+    user_question = next((m["content"] for m in messages if m["role"] == "user"), "None")
+    print(f"\n[LLM Request]\nModel: {model}\nSystem Instruction: {system_instruction}\nUser Question: {user_question}\n", flush=True)
     
     data = json.dumps(payload).encode('utf-8')
     req = urllib.request.Request(url, data=data, headers={'Content-Type': 'application/json'})
     
     try:
-        with urllib.request.urlopen(req) as response:
+        with urllib.request.urlopen(req, timeout=300) as response:
             result = json.loads(response.read().decode('utf-8'))
             
             # Log Stat
