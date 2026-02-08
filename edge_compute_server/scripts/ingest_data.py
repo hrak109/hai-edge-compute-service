@@ -20,16 +20,17 @@ client = weaviate.connect_to_custom(
 )
 
 Settings.embed_model = OllamaEmbedding(
-    model_name="nomic-embed-text:latest", 
+    model_name="nomic-embed-text:latest",
     base_url=OLLAMA_BASE_URL
 )
+
 
 def get_security_metadata(file_path):
 
     folder_name = os.path.basename(os.path.dirname(file_path))
-    
+
     metadata = {}
-    
+
     if folder_name == "admin":
         metadata = {"access_level": "admin"}
     elif folder_name == "public_oakhillpines":
@@ -40,9 +41,10 @@ def get_security_metadata(file_path):
         metadata = {"access_level": "private_oakhillpines"}
     else:
         metadata = {"access_level": "general"}
-        
+
     print(f"Processing: {os.path.basename(file_path)} -> Tags: {metadata}")
     return metadata
+
 
 def main():
     vector_store = WeaviateVectorStore(weaviate_client=client, index_name="PermanentKnowledge")
@@ -65,12 +67,13 @@ def main():
     print(f"Loaded {len(documents)} pages/chunks. Indexing now (this uses GPU)...")
 
     VectorStoreIndex.from_documents(
-        documents, 
+        documents,
         storage_context=storage_context,
         show_progress=True
     )
-    
+
     print("Success! All PDFs are now indexed with security metadata.")
+
 
 if __name__ == "__main__":
     main()

@@ -4,6 +4,7 @@ from llama_index.core import VectorStoreIndex
 from llama_index.vector_stores.weaviate import WeaviateVectorStore
 from llama_index.core.vector_stores import MetadataFilter, MetadataFilters, FilterOperator
 
+
 class RagEngine:
     def __init__(self):
         self.weaviate_url = os.getenv("WEAVIATE_URL")
@@ -27,18 +28,18 @@ class RagEngine:
                     port = int(url.split(":")[-1].split("/")[0])
                 except ValueError:
                     pass
-            
+
             print(f"Connecting to Weaviate service (host: {host}, port: {port})...", flush=True)
-            
+
             client = weaviate.connect_to_custom(
-                http_host=host,      
+                http_host=host,
                 http_port=port,
-                http_secure=url.startswith("https"),         
-                grpc_host=host,      
-                grpc_port=50051,           
+                http_secure=url.startswith("https"),
+                grpc_host=host,
+                grpc_port=50051,
                 grpc_secure=url.startswith("https"),
             )
-            
+
             vector_store = WeaviateVectorStore(weaviate_client=client, index_name="PermanentKnowledge")
             self.global_index = VectorStoreIndex.from_vector_store(vector_store=vector_store)
             print("RAG: Weaviate connected and index loaded.", flush=True)
@@ -52,7 +53,7 @@ class RagEngine:
 
         if isinstance(auth_params, str):
             auth_params = [auth_params]
-        
+
         if not auth_params:
             return "Error: Access Denied (No Auth Params)."
 

@@ -13,7 +13,14 @@ Ensure you have the following installed:
 
 The project uses `pytest` for unit testing. Configuration validation and prompt logic are tested here.
 
-### Setup
+### Quick Start (Recommended)
+Run the convenience script to execute all local tests:
+```bash
+./run_local_tests.sh
+```
+This script handles virtual environment activation and dependency checks automatically.
+
+### Manual Setup
 Activate your virtual environment:
 ```bash
 source venv/bin/activate
@@ -23,9 +30,10 @@ source venv/bin/activate
 python3 -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
+pip install pytest
 ```
 
-### Run Tests
+### Run Tests Manually
 Execute the tests using the module syntax to ensure proper import resolution:
 ```bash
 python -m pytest
@@ -35,9 +43,12 @@ python -m pytest
 ```
 tests/test_config.py ..
 tests/test_prompts.py ....
+tests/test_prompts_socius_secret.py ........
 ```
 
-## 3. Manual / Integration Testing
+## 3. CI/CD
+A GitHub Actions workflow (`.github/workflows/ci.yml`) automatically runs these tests on every push and pull request to `main`, `master`, or `develop` branches.
+
 
 Since the worker listens to Kafka topics, manual testing involves sending messages to these topics and observing the worker logs.
 

@@ -1,4 +1,3 @@
-import os
 
 # Try to import secret logic
 try:
@@ -7,6 +6,7 @@ try:
 except ImportError:
     HAS_SECRET = False
 
+
 def get_system_instruction() -> str:
     """
     Returns the system instruction for Context AI.
@@ -14,6 +14,9 @@ def get_system_instruction() -> str:
     """
     if HAS_SECRET:
         return secret.get_system_instruction()
-    
+
     # Default / Fallback Logic (Safe to commit)
-    return "You are a helpful customer service assistant. Please answer the user's questions based on general knowledge."
+    return (
+        "You are a helpful customer service assistant. "
+        "Please answer the user's questions based on general knowledge."
+    )

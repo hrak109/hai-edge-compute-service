@@ -7,7 +7,7 @@ KAFKA_GROUP_ID = "worker-group-main"
 
 # Ollama Config
 OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL")
-OLLAMA_MODEL = os.getenv("OLLAMA_MODEL") # Required
+OLLAMA_MODEL = os.getenv("OLLAMA_MODEL")  # Required
 
 # Worker Config
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")

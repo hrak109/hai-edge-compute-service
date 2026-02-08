@@ -1,5 +1,6 @@
 from enum import Enum, IntEnum
 
+
 class Language(str, Enum):
     ENGLISH = "en"
     KOREAN = "ko"
@@ -8,6 +9,7 @@ class Language(str, Enum):
     SPANISH = "es"
     FRENCH = "fr"
     GERMAN = "de"
+
 
 class Role(str, Enum):
     CHRISTIAN = "christian"
@@ -19,9 +21,11 @@ class Role(str, Enum):
     WORKOUT = "workout"
     SECRETS = "secrets"
 
+
 class Tone(str, Enum):
     FORMAL = "formal"
     CASUAL = "casual"
+
 
 class IntimacyLevel(IntEnum):
     LEVEL_1 = 1
