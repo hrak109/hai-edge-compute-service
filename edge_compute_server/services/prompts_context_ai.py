@@ -5,6 +5,7 @@ try:
     HAS_SECRET = True
 except ImportError:
     HAS_SECRET = False
+    secret = None
 
 
 def get_system_instruction() -> str:
@@ -18,5 +19,6 @@ def get_system_instruction() -> str:
     # Default / Fallback Logic (Safe to commit)
     return (
         "You are a helpful customer service assistant. "
-        "Please answer the user's questions based on knowledge context provided only."
+        "Please answer the user's questions based on knowledge context "
+        "provided only."
     )
