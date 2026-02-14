@@ -112,8 +112,15 @@ def run_worker():
                 system_instruction = ""
 
                 if source_topic == 'questions-context-ai':
-                    # Context AI (e.g. Oakhill Pines)
-                    system_instruction = prompts_context_ai.get_system_instruction()
+                    # Context AI (e.g. Oakhill Pines / Custom Business)
+                    base_instruction = prompts_context_ai.get_system_instruction()
+                    dynamic_instruction = data.get("system_instruction")
+
+                    if dynamic_instruction:
+                        # User requested: append secret (base) to dynamic
+                        system_instruction = f"{dynamic_instruction}\n\n{base_instruction}"
+                    else:
+                        system_instruction = base_instruction
                 else:
                     # Default / Socius Friends
                     system_instruction = prompts_socius.get_system_instruction(user_context, socius_context)

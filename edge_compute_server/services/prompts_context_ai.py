@@ -18,5 +18,5 @@ def get_system_instruction() -> str:
     # Default / Fallback Logic (Safe to commit)
     return (
         "You are a helpful customer service assistant. "
-        "Please answer the user's questions based on general knowledge."
+        "Please answer the user's questions based on knowledge context provided only."
     )
