@@ -15,7 +15,7 @@ def test_context_ai_fallback_string():
     """
     with patch.object(prompts_context_ai, 'HAS_SECRET', False):
         instruction = prompts_context_ai.get_system_instruction()
-        expected_fragment = "based on knowledge context provided only"
+        expected_fragment = "strictly context-aware customer service assistant"
         assert expected_fragment in instruction
         assert "Oakhill Pines" not in instruction
 
