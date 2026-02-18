@@ -1,0 +1,10 @@
+FROM ollama/ollama:latest
+
+# Install software-properties-common for add-apt-repository
+RUN apt-get update && apt-get install -y software-properties-common
+
+# Add kisak-mesa PPA to get the latest Mesa drivers (including dzn for WSL2)
+RUN add-apt-repository ppa:kisak/kisak-mesa && apt-get update
+
+# Install Mesa Vulkan drivers and utilities
+RUN apt-get install -y mesa-vulkan-drivers vulkan-tools
