@@ -4,7 +4,7 @@ import urllib.error
 from core.config import OLLAMA_BASE_URL
 
 
-def query_ollama(model: str, messages: list[dict]) -> str:
+def query_ollama(model: str, messages: list[dict], num_predict: int = 1024) -> str:
     url = f"{OLLAMA_BASE_URL}/api/chat"
     payload = {
         "model": model,
@@ -12,7 +12,7 @@ def query_ollama(model: str, messages: list[dict]) -> str:
         "stream": False,
         "options": {
             "num_ctx": 4096,
-            "num_predict": 1024
+            "num_predict": num_predict
         }
     }
 
