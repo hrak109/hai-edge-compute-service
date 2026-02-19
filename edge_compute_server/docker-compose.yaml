@@ -12,10 +12,8 @@ services:
       - OLLAMA_CONTEXT_LENGTH=512
       - OLLAMA_DEBUG=false
       - OLLAMA_NUM_PARALLEL=4
-      - OLLAMA_KEEP_ALIVE=-1
-      - OLLAMA_LLM_LIBRARY=vulkan
-      - OLLAMA_VULKAN=1
-      - GGML_VK_VISIBLE_DEVICES=0
+      - OLLAMA_KEEP_ALIVE=5m
+      - OLLAMA_VULKAN=${USE_VULKAN:-1}
       - HSA_OVERRIDE_GFX_VERSION=10.3.0
       - LD_LIBRARY_PATH=/usr/lib/wsl/lib:/usr/lib/x86_64-linux-gnu:/usr/lib
     volumes:
