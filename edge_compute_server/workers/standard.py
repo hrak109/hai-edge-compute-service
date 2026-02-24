@@ -140,7 +140,7 @@ def run_worker():
 
                 messages.append({"role": "user", "content": formatted_question})
 
-                response = query_ollama(requested_model, messages, num_predict=200)
+                response = query_ollama(requested_model, messages, num_predict=300)
 
             result_payload = {
                 "question_id": question_id,
