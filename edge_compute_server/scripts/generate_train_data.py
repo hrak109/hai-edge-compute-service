@@ -205,13 +205,13 @@ def generate_assistant_data(count):
 def generate_cal_tracker_data(count):
     templates = [
         ("I ate {food}.",
-         "Yum! 😋\n```json\n{{\"type\": \"calorie_event\", \"food\": \"{food}\", \"options\": [{{\"label\": \"Small Portion\", \"calories\": 150}}, {{\"label\": \"Medium Portion\", \"calories\": 350}}, {{\"label\": \"Large Portion\", \"calories\": 550}}]}}\n```"),
+         "Yum! 😋\n```json\n[\n  {{\"type\": \"calorie_event\", \"food\": \"{food}\", \"options\": [{{\"label\": \"Small Portion\", \"calories\": 150}}, {{\"label\": \"Medium Portion\", \"calories\": 350}}, {{\"label\": \"Large Portion\", \"calories\": 550}}]}}\n]\n```"),
         ("Had {food} for lunch.",
-         "Nice lunch! 🥗\n```json\n{{\"type\": \"calorie_event\", \"food\": \"{food}\", \"options\": [{{\"label\": \"1 Serving (100g)\", \"calories\": 200}}, {{\"label\": \"2 Servings (200g)\", \"calories\": 400}}]}}\n```"),
+         "Nice lunch! 🥗\n```json\n[\n  {{\"type\": \"calorie_event\", \"food\": \"{food}\", \"options\": [{{\"label\": \"1 Serving (100g)\", \"calories\": 200}}, {{\"label\": \"2 Servings (200g)\", \"calories\": 400}}]}}\n]\n```"),
         ("오늘 {korean_food} 먹었어.",
-         "든든한 식사 하셨네요! 멋집니다. 🍚\n```json\n{{\"type\": \"calorie_event\", \"food\": \"{korean_food}\", \"options\": [{{\"label\": \"소식 (작은 그릇)\", \"calories\": 250}}, {{\"label\": \"일반 (한 그릇)\", \"calories\": 500}}, {{\"label\": \"대식 (큰 그릇)\", \"calories\": 800}}]}}\n```"),
+         "든든한 식사 하셨네요! 멋집니다. 🍚\n```json\n[\n  {{\"type\": \"calorie_event\", \"food\": \"{korean_food}\", \"options\": [{{\"label\": \"소식 (작은 그릇)\", \"calories\": 250}}, {{\"label\": \"일반 (한 그릇)\", \"calories\": 500}}, {{\"label\": \"대식 (큰 그릇)\", \"calories\": 800}}]}}\n]\n```"),
         ("{korean_food}랑 간식 먹었어.",
-         "맛있게 드셨다니 다행이네요! 🍲\n```json\n{{\"type\": \"calorie_event\", \"food\": \"{korean_food}\", \"options\": [{{\"label\": \"1인분\", \"calories\": 450}}, {{\"label\": \"1.5인분\", \"calories\": 675}}]}}\n```\n```json\n{{\"type\": \"calorie_event\", \"food\": \"간식\", \"options\": [{{\"label\": \"조금\", \"calories\": 100}}, {{\"label\": \"보통\", \"calories\": 250}}]}}\n```"),
+         "맛있게 드셨다니 다행이네요! 🍲\n```json\n[\n  {{\"type\": \"calorie_event\", \"food\": \"{korean_food}\", \"options\": [{{\"label\": \"1인분\", \"calories\": 450}}, {{\"label\": \"1.5인분\", \"calories\": 675}}]}},\n  {{\"type\": \"calorie_event\", \"food\": \"간식\", \"options\": [{{\"label\": \"조금\", \"calories\": 100}}, {{\"label\": \"보통\", \"calories\": 250}}]}}\n]\n```"),
     ]
     foods = ["pizza", "burger", "salad", "sushi", "apple", "steak"]
     korean_foods = ["김치찌개", "돈까스", "삼겹살", "비빔밥", "치킨", "제육볶음"]
@@ -232,11 +232,11 @@ def generate_cal_tracker_data(count):
 def generate_workout_data(count):
     templates = [
         ("I ran for {duration} mins.",
-         "Good run! 🏃\n```json\n{{\"type\": \"workout_event\", \"exercise\": \"running\", \"duration\": {duration}, \"options\": [{{\"label\": \"Light Pace\", \"calories\": 150}}, {{\"label\": \"Moderate Pace\", \"calories\": 250}}, {{\"label\": \"Fast Pace\", \"calories\": 400}}]}}\n```"),
+         "Good run! 🏃\n```json\n[\n  {{\"type\": \"workout_event\", \"exercise\": \"running\", \"duration\": {duration}, \"options\": [{{\"label\": \"Light Pace\", \"calories\": 150}}, {{\"label\": \"Moderate Pace\", \"calories\": 250}}, {{\"label\": \"Fast Pace\", \"calories\": 400}}]}}\n]\n```"),
         ("Did {exercise} for {duration} mins.",
-         "Strong work! 💪\n```json\n{{\"type\": \"workout_event\", \"exercise\": \"{exercise}\", \"duration\": {duration}, \"options\": [{{\"label\": \"Low Intensity\", \"calories\": 100}}, {{\"label\": \"Standard\", \"calories\": 200}}, {{\"label\": \"High Intensity\", \"calories\": 350}}]}}\n```"),
+         "Strong work! 💪\n```json\n[\n  {{\"type\": \"workout_event\", \"exercise\": \"{exercise}\", \"duration\": {duration}, \"options\": [{{\"label\": \"Low Intensity\", \"calories\": 100}}, {{\"label\": \"Standard\", \"calories\": 200}}, {{\"label\": \"High Intensity\", \"calories\": 350}}]}}\n]\n```"),
         ("오늘 {korean_exercise} {duration}분 했어요.",
-         "정말 대단하시네요! 꾸준히 하는 모습 멋집니다. 🏋️\n```json\n{{\"type\": \"workout_event\", \"exercise\": \"{korean_exercise}\", \"duration\": {duration}, \"options\": [{{\"label\": \"가볍게 (저강도)\", \"calories\": 80}}, {{\"label\": \"보통 (중강도)\", \"calories\": 160}}, {{\"label\": \"격렬하게 (고강도)\", \"calories\": 300}}]}}\n```"),
+         "정말 대단하시네요! 꾸준히 하는 모습 멋집니다. 🏋️\n```json\n[\n  {{\"type\": \"workout_event\", \"exercise\": \"{korean_exercise}\", \"duration\": {duration}, \"options\": [{{\"label\": \"가볍게 (저강도)\", \"calories\": 80}}, {{\"label\": \"보통 (중강도)\", \"calories\": 160}}, {{\"label\": \"격렬하게 (고강도)\", \"calories\": 300}}]}}\n]\n```"),
     ]
     exercises = ["cycling", "swimming", "yoga", "boxing", "jumping jacks"]
     korean_exercises = ["수영", "자전거", "스쿼트", "필라테스", "요가", "러닝머신", "데드리프트"]
@@ -261,13 +261,13 @@ def generate_workout_data(count):
 def generate_secrets_data(count):
     templates = [
         ("My {service} password is {password}.",
-         "Got it. Sealed tight. 🤐\n```json\n{{\"type\": \"password_event\", \"service\": \"{service}\", \"username\": \"\", \"password\": \"{password}\"}}\n```"),
+         "Got it. Sealed tight. 🤐\n```json\n[\n  {{\"type\": \"password_event\", \"service\": \"{service}\", \"username\": \"\", \"password\": \"{password}\"}}\n]\n```"),
         ("Save login for {service}: user {user} pass {password}.",
-         "Saved securely. 🔒\n```json\n{{\"type\": \"password_event\", \"service\": \"{service}\", \"username\": \"{user}\", \"password\": \"{password}\"}}\n```"),
+         "Saved securely. 🔒\n```json\n[\n  {{\"type\": \"password_event\", \"service\": \"{service}\", \"username\": \"{user}\", \"password\": \"{password}\"}}\n]\n```"),
         ("내 {service} 비번 {password}이야. 잊어버리지 않게 저장해줘.",
-         "알겠어! 안전하게 금고에 넣어뒀지. 걱정 마! 🤐\n```json\n{{\"type\": \"password_event\", \"service\": \"{service}\", \"username\": \"\", \"password\": \"{password}\"}}\n```"),
+         "알겠어! 안전하게 금고에 넣어뒀지. 걱정 마! 🤐\n```json\n[\n  {{\"type\": \"password_event\", \"service\": \"{service}\", \"username\": \"\", \"password\": \"{password}\"}}\n]\n```"),
         ("{service} 아이디는 {user} 이고 비밀번호는 {password} 로 변경했어.",
-         "바뀐 정보로 업데이트 완료! 쇼핑할 때 언제든 말해. 🔒\n```json\n{{\"type\": \"password_event\", \"service\": \"{service}\", \"username\": \"{user}\", \"password\": \"{password}\"}}\n```"),
+         "바뀐 정보로 업데이트 완료! 쇼핑할 때 언제든 말해. 🔒\n```json\n[\n  {{\"type\": \"password_event\", \"service\": \"{service}\", \"username\": \"{user}\", \"password\": \"{password}\"}}\n]\n```"),
     ]
     services = ["Netflix", "Google", "Facebook", "Bank", "Email", "쿠팡", "네이버", "카카오"]
 
