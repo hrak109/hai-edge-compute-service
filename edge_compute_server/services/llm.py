@@ -11,7 +11,7 @@ def query_ollama(model: str, messages: list[dict], num_predict: int = 300) -> st
         "messages": messages,
         "stream": False,
         "options": {
-            "num_ctx": 512,
+            "num_ctx": 4096,
             "num_predict": num_predict
         }
     }
